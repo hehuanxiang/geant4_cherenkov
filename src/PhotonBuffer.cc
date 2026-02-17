@@ -10,6 +10,7 @@
 #include <iostream>
 
 #ifdef G4MULTITHREADED
+#include "G4MTRunManager.hh"
 G4Mutex PhotonBuffer::fBufferMutex = G4MUTEX_INITIALIZER;
 #endif
 
@@ -17,9 +18,9 @@ PhotonBuffer::PhotonBuffer(G4int bufferSize)
 : fBufferSize(bufferSize), fBufferEntries(0), fTotalEntries(0), fOutputPath("")
 {
 #ifdef G4MULTITHREADED
-    // Adjust buffer size per thread
+    // Adjust buffer size per worker thread (TOPAS 风格: 使用 GetNumberOfThreads)
     if (G4Threading::IsWorkerThread()) {
-        G4int nThreads = G4Threading::GetNumberOfRunningWorkerThreads();
+        G4int nThreads = G4MTRunManager::GetMasterRunManager()->GetNumberOfThreads();
         if (nThreads > 0) {
             fBufferSize = bufferSize / nThreads;
         }
@@ -85,7 +86,8 @@ void PhotonBuffer::WriteBuffer(const std::string& filePath)
     
     outFile.close();
     
-    G4cout << "Wrote " << fBufferEntries << " photons to " << filePath << G4endl;
+    // 不打印每次写入，避免 14 亿光子时刷屏（约 1400 次）
+    // G4cout << "Wrote " << fBufferEntries << " photons to " << filePath << G4endl;
 }
 
 void PhotonBuffer::AbsorbWorkerBuffer(PhotonBuffer* workerBuffer)
@@ -98,9 +100,9 @@ void PhotonBuffer::AbsorbWorkerBuffer(PhotonBuffer* workerBuffer)
     
     // If master buffer cannot accommodate worker buffer, write to disk first
     if (fBufferEntries + workerBuffer->GetBufferEntries() > fBufferSize) {
-        // This should not happen if buffer sizes are properly tuned
         if (fBufferEntries > 0) {
-            G4cout << "Master buffer full, writing " << fBufferEntries << " photons to disk before absorbing worker buffer" << G4endl;
+            // 不打印每次 flush，避免 MT 下大量 worker 吸收时刷屏
+            // G4cout << "Master buffer full, writing " << fBufferEntries << " photons to disk before absorbing worker buffer" << G4endl;
             WriteBuffer(fOutputPath);
             ClearBuffer();
         }

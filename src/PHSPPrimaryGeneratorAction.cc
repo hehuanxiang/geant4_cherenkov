@@ -124,7 +124,9 @@ void PHSPPrimaryGeneratorAction::GeneratePrimaries(G4Event* anEvent)
     return;
   }
 
-  PHSPParticle& particle = fPHSPData[fCurrentParticleIndex];
+  // 使用 event ID 索引 PHSP 粒子，MT 模式下每个 worker 处理不同 event，必须用 event ID 确保正确对应
+  G4int idx = anEvent->GetEventID() % fPHSPData.size();
+  PHSPParticle& particle = fPHSPData[idx];
   
   G4ParticleDefinition* particleDef = GetParticleByCode(particle.particleType);
   fParticleGun->SetParticleDefinition(particleDef);
@@ -142,14 +144,6 @@ void PHSPPrimaryGeneratorAction::GeneratePrimaries(G4Event* anEvent)
   fParticleGun->SetParticleEnergy(particle.energy * MeV);
   
   fParticleGun->GeneratePrimaryVertex(anEvent);
-  
-  fCurrentParticleIndex++;
-  
-  if (fCurrentParticleIndex >= (G4int)fPHSPData.size()) {
-    if (fCycleData) {
-      fCurrentParticleIndex = 0;
-    }
-  }
 }
 
 void PHSPPrimaryGeneratorAction::PrintStatistics()

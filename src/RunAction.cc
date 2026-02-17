@@ -10,6 +10,9 @@
 #include "G4SystemOfUnits.hh"
 #include "G4Threading.hh"
 #include "Config.hh"
+#ifdef G4MULTITHREADED
+#include "G4MTRunManager.hh"
+#endif
 #include <iostream>
 #include <iomanip>
 #include <sstream>
@@ -40,6 +43,19 @@ RunAction::~RunAction()
     delete fThreadBuffer;
     fThreadBuffer = nullptr;
   }
+  
+  // Delete master buffer (only master thread in MT; always in sequential)
+#ifdef G4MULTITHREADED
+  if (G4Threading::IsMasterThread() && fMasterBuffer != nullptr) {
+    delete fMasterBuffer;
+    fMasterBuffer = nullptr;
+  }
+#else
+  if (fMasterBuffer != nullptr) {
+    delete fMasterBuffer;
+    fMasterBuffer = nullptr;
+  }
+#endif
 }
 
 void RunAction::BeginOfRunAction(const G4Run*)
@@ -48,13 +64,24 @@ void RunAction::BeginOfRunAction(const G4Run*)
   fStartTime = std::chrono::high_resolution_clock::now();
   getrusage(RUSAGE_SELF, &fStartUsage);
   
-  // 重置光子计数
-  EventAction::ResetPhotonCount();
+  // 重置光子计数（仅 master 执行，避免 MT 下并发写）
+#ifdef G4MULTITHREADED
+  if (G4Threading::IsMasterThread())
+#endif
+  {
+    EventAction::ResetPhotonCount();
+  }
   
   // Get output config
   Config* config = Config::GetInstance();
   std::string outputFilePath = config->GetOutputFilePath();
-  fOutputBasePath = outputFilePath;
+  // fOutputBasePath 为静态变量，仅 master 设置，避免 MT 下数据竞争
+#ifdef G4MULTITHREADED
+  if (G4Threading::IsMasterThread())
+#endif
+  {
+    fOutputBasePath = outputFilePath;
+  }
   fOutputFormat = config->GetOutputFormat();
   
   // Convert output format to lowercase for comparison
@@ -73,7 +100,10 @@ void RunAction::BeginOfRunAction(const G4Run*)
       G4cout << "Worker thread " << G4Threading::G4GetThreadId() 
              << " buffer size: " << fThreadBuffer->GetBufferSize() << G4endl;
     } else {
-      // Master thread: create master buffer
+      // Master thread: truncate output file at run start (overwrite previous run)
+      std::ofstream truncateFile(fOutputBasePath + ".phsp", std::ios::out | std::ios::trunc | std::ios::binary);
+      truncateFile.close();
+      // Create master buffer
       if (fMasterBuffer == nullptr) {
         fMasterBuffer = new PhotonBuffer(bufferSize);
         fMasterBuffer->SetOutputPath(fOutputBasePath + ".phsp");  // Set path for auto-flush
@@ -81,7 +111,9 @@ void RunAction::BeginOfRunAction(const G4Run*)
       }
     }
 #else
-    // Sequential mode: single buffer
+    // Sequential mode: truncate output file and create single buffer
+    std::ofstream truncateFile(fOutputBasePath + ".phsp", std::ios::out | std::ios::trunc | std::ios::binary);
+    truncateFile.close();
     if (fMasterBuffer == nullptr) {
       fMasterBuffer = new PhotonBuffer(bufferSize);
       fMasterBuffer->SetOutputPath(fOutputBasePath + ".phsp");  // Set path for auto-flush
@@ -310,8 +342,12 @@ void RunAction::MergeCSVThreadFiles()
   // Write header once
   WriteCSVHeader(finalOutput);
   
-  // Merge all thread files
-  G4int numThreads = G4Threading::GetNumberOfRunningWorkerThreads();
+  // Merge all thread files (MT: GetNumberOfThreads; sequential: 1 file .thread_0)
+#ifdef G4MULTITHREADED
+  G4int numThreads = G4MTRunManager::GetMasterRunManager()->GetNumberOfThreads();
+#else
+  G4int numThreads = 1;
+#endif
   for (G4int i = 0; i < numThreads; i++) {
     std::ostringstream oss;
     oss << fOutputBasePath << ".thread_" << i;

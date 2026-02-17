@@ -10,6 +10,7 @@
 #include <map>
 #include <fstream>
 #include <chrono>
+#include <atomic>
 
 class RunAction;
 
@@ -41,9 +42,9 @@ class EventAction : public G4UserEventAction
     std::map<G4int, PhotonData> fPhotonDataMap;
     
   public:
-    static G4int fTotalPhotonCount;
-    static G4int GetTotalPhotonCount() { return fTotalPhotonCount; }
-    static void ResetPhotonCount() { fTotalPhotonCount = 0; }
+    static std::atomic<G4int> fTotalPhotonCount;
+    static G4int GetTotalPhotonCount() { return fTotalPhotonCount.load(); }
+    static void ResetPhotonCount() { fTotalPhotonCount.store(0); }
 };
 
 #endif

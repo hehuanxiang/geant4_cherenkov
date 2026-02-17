@@ -9,8 +9,8 @@
 #include "G4RunManager.hh"
 #include "G4SystemOfUnits.hh"
 
-// 初始化静态成员变量
-G4int EventAction::fTotalPhotonCount = 0;
+// 初始化静态成员变量（atomic 用于 MT 模式下的线程安全计数）
+std::atomic<G4int> EventAction::fTotalPhotonCount(0);
 
 EventAction::EventAction(RunAction* runAction)
 : G4UserEventAction(),
@@ -46,7 +46,7 @@ void EventAction::EndOfEventAction(const G4Event*)
 void EventAction::RecordPhotonCreation(G4int trackID, G4double x, G4double y, G4double z,
                                        G4double dirx, G4double diry, G4double dirz)
 {
-  fTotalPhotonCount++;  // 递增光子计数
+  fTotalPhotonCount.fetch_add(1);  // 原子递增，MT 安全
   
   PhotonData& data = fPhotonDataMap[trackID];
   data.initialX = x;
