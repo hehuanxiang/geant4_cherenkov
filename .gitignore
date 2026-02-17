@@ -1,0 +1,41 @@
+# Build directories
+build/
+cmake-build-*/
+.cmake/
+
+# Output files
+output/
+*.phsp
+*.csv
+*.header
+
+# Log files
+log/
+*.log
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# macOS
+.DS_Store
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+*.egg-info/
+dist/
+build/
+
+# Temporary files
+*.tmp
+*.bak
+
+# plot files
+plot/

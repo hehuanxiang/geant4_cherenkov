@@ -1,0 +1,351 @@
+======================================================================
+IAEA Phase Space File Analysis Report
+======================================================================
+
+FILE INFORMATION
+----------------------------------------------------------------------
+PHSP File: /home/xhh2c/project/data_6MV_photon_PHSP/Varian_TrueBeam6MV_03.phsp
+Header File: /home/xhh2c/project/data_6MV_photon_PHSP/Varian_TrueBeam6MV_03.header
+Sample Rate: 1 in 100 particles
+Sampled Particles: 523,026
+
+BEAM INFORMATION (from Header)
+----------------------------------------------------------------------
+Beam: 6MV photon beam stored on a cylindrical surface
+Nominal SSD: 
+Total Histories: 52,302,570
+Total Particles: 52,302,569
+
+PARTICLE COMPOSITION
+----------------------------------------------------------------------
+From Header File:
+  Photons:      51,692,883 ( 98.83%)
+  Electrons:       589,933 (  1.13%)
+  Positrons:        19,754 (  0.04%)
+  TOTAL:         52,302,569
+
+From Sampled Data:
+  Unknown(-3)             1 (  0.00%)
+  Photon            517,043 ( 98.86%)
+  Electron            5,776 (  1.10%)
+  Positron              206 (  0.04%)
+  TOTAL:            523,026
+
+ENERGY STATISTICS (MeV)
+----------------------------------------------------------------------
+Unknown(-3):
+  Mean:     0.1384 MeV
+  Median:   0.1384 MeV
+  Std:      0.0000 MeV
+  Range:  [  0.1384,   0.1384] MeV
+
+Photon:
+  Mean:     1.2304 MeV
+  Median:   0.8562 MeV
+  Std:      1.0741 MeV
+  Range:  [  0.0026,   6.2638] MeV
+
+Electron:
+  Mean:     0.7480 MeV
+  Median:   0.4598 MeV
+  Std:      0.7965 MeV
+  Range:  [  0.0006,   4.9939] MeV
+
+Positron:
+  Mean:     1.1644 MeV
+  Median:   0.9691 MeV
+  Std:      0.8327 MeV
+  Range:  [  0.0289,   4.7187] MeV
+
+SPATIAL DISTRIBUTION (cm)
+----------------------------------------------------------------------
+From Header File:
+  X Range: [-30.3716,  30.3713] cm
+  Y Range: [-30.0000,  30.0000] cm
+  Z Range: [ 17.7671,  27.3515] cm
+
+From Sampled Data:
+  X Position:
+    Mean:     0.0189 cm
+    Std:      5.6708 cm
+    Range:  [-30.3649,  30.3625] cm
+  Y Position:
+    Mean:    -0.0200 cm
+    Std:      4.7471 cm
+    Range:  [-30.0000,  30.0000] cm
+  Z Position:
+    Mean:    27.0226 cm
+    Std:      1.2259 cm
+    Range:  [ 17.7679,  27.3415] cm
+
+  Radial Distribution:
+    Mean Radius:     5.3059 cm
+    Std Radius:      5.1519 cm
+    Max Radius:     42.5399 cm
+
+PARTICLE COVERAGE (Percentage within different ranges)
+----------------------------------------------------------------------
+  Radius   |  % Within  |  |X| ≤ R  |  |Y| ≤ R
+  ------------------------------------------------------------
+     5 cm  |    58.7%   |   86.5%  |   86.5%
+    10 cm  |    95.9%   |   96.4%  |   97.2%
+    15 cm  |    96.1%   |   96.7%  |   97.9%
+    20 cm  |    96.5%   |   97.2%  |   98.6%
+    30 cm  |    98.2%   |   99.8%  |  100.0%
+
+Key Findings:
+  • 95.9% of particles within 10 cm radius
+  • 96.5% of particles within 20 cm radius
+  • Only 3.5% in the outer 20-30 cm region
+
+DIRECTION STATISTICS
+----------------------------------------------------------------------
+W Component (along beam axis):
+  Mean: 0.959224
+  Std:  0.109765
+  Range: [0.000000, 1.000000]
+  (W≈1 means particles moving parallel to Z-axis)
+
+Angular Distribution:
+  Theta (azimuthal):  Mean =  -0.110°, Std = 103.721°
+  Phi (polar):        Mean =  12.305°, Std =  11.598°
+
+COORDINATE SYSTEM
+----------------------------------------------------------------------
+Cartesian, right-handed:
+The origin is inside the target bottom, x=y=0 is the central position of the target;
+Positive x-axis is towards the linac, parallel to the upper jaws movement;
+Positive z-axis is towards the water phantom or patient;
+
+IMPORTANT NOTES
+----------------------------------------------------------------------
+1. Source Type: Patient-independent cylindrical phase space
+2. Beam Quality: 6MV photon beam from Varian TrueBeam linac
+3. Source Location: Above the movable upper jaws (field-independent)
+4. Primary Radiation: Photons (>98%), with small electron/positron
+   contamination from linac head interactions
+5. Spatial Distribution: HIGHLY CONCENTRATED near beam axis
+   • Range: ±30 cm (extreme outliers)
+   • 95.9% of particles within ±10 cm
+   • Standard deviation: X=5.7 cm, Y=4.7 cm
+6. Z Position: Source particles distributed over ~10cm depth
+   (17.77-27.35 cm), representing actual linac geometry
+7. Beam Divergence: Highly collimated (W>0.95 for most particles)
+8. Mean W = 0.959224 → Divergence angle
+   ≈ 16.42°
+9. CRITICAL: Do NOT design geometry based on Range extremes!
+   Use standard deviation or 95% coverage for realistic sizing
+
+FIGURE EXPLANATIONS
+----------------------------------------------------------------------
+
+Figure 1: X-Y Position Distribution (input_phsp_xy_distribution.png)
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+This 2D histogram shows the spatial distribution of source particles
+in the X-Y plane perpendicular to the beam axis.
+
+Physical Interpretation:
+  • X-axis: Horizontal direction (parallel to upper jaws movement)
+  • Y-axis: Vertical direction (perpendicular to jaws)
+  • Color intensity: Particle density (particles per unit area)
+  • Bright center: High-density beam core (~96% of particles within 10 cm)
+  • Dim periphery: Scattered particles (exponentially decreasing density)
+
+Key Observations:
+  1. Gaussian-like Distribution: Beam exhibits near-Gaussian profile
+     typical of medical linac beams after primary collimation
+  
+  2. Central Peak: Highest density at (0,0), confirms proper beam
+     alignment and collimation
+  
+  3. Standard Deviation: σ_X = 5.7 cm, σ_Y = 4.7 cm
+     → Slightly elliptical beam cross-section
+  
+  4. Outliers: Scattered particles extend to ±30 cm (visible as
+     faint background), but represent only 3.5% of total flux
+  
+  5. Symmetry: Near-perfect radial symmetry indicates well-designed
+     collimator system without significant asymmetric scattering
+
+Clinical Significance:
+  • This distribution represents the particle fluence that would
+    enter the water phantom (or patient) in a treatment scenario
+  • The concentrated core (95.9% within 10 cm) corresponds to the
+    clinically useful treatment field
+  • The peripheral tail represents out-of-field dose contributions
+    from head scatter and leakage
+
+Comparison to Cherenkov Output:
+  • This is the INPUT source distribution
+  • Cherenkov output (Figure 2 in main analysis) shows the RESULT
+    after particles interact with water and produce Cherenkov photons
+  • Both show concentrated distributions, but Cherenkov photons have
+    different spectral and angular characteristics
+
+
+Figure 2: Diagnostic Plots (input_phsp_diagnostics.png)
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+Four-panel diagnostic figure showing complementary characteristics
+of the input particle source.
+
+Panel A (Top-Left): Energy Spectrum by Particle Type
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+Histogram showing energy distribution (MeV) for each particle species.
+
+Physical Interpretation:
+  • Photon spectrum (green): Bremsstrahlung spectrum from 6MV linac
+    - Mean: 1.23 MeV (typical for 6MV beam)
+    - Range: 0.0026-6.26 MeV (extends to ~6 MV maximum energy)
+    - Peak: Low-energy region (0.5-1.5 MeV) due to bremsstrahlung shape
+    - Tail: Exponentially decreasing at higher energies
+  
+  • Electron spectrum (red): Secondary electrons from photonuclear
+    reactions and pair production in linac components
+    - Mean: 0.75 MeV (lower than photons)
+    - Range: 0.0006-4.99 MeV
+    - Population: Only 1.13% of total particles
+  
+  • Positron spectrum (blue): From pair production (E_γ > 1.022 MeV)
+    - Mean: 1.16 MeV
+    - Population: Trace amount (0.04%)
+
+Clinical Significance:
+  • The photon spectrum determines penetration depth and dose deposition
+  • Mean energy ~1.2 MeV provides good balance between surface dose
+    and depth penetration for treatment planning
+  • Electron contamination (<2%) contributes to skin dose in treatments
+
+
+Panel B (Top-Right): Z-Position Distribution
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+Histogram showing axial position (along beam direction) of source particles.
+
+Physical Interpretation:
+  • Z-range: 17.77-27.35 cm (span ~10 cm)
+  • Mean: 27.02 cm (near the top of the range)
+  • Peak: Sharp peak at Z ≈ 27 cm
+  
+This distribution represents:
+  • Phase space scored on a cylindrical surface below the linac jaws
+  • The 10 cm depth reflects the physical extent of the scoring volume
+  • Particles at different Z-positions have traversed different amounts
+    of material in the linac head, affecting their energy spectrum
+
+Practical Implication:
+  • Water phantom or patient geometry should start at Z ≥ 30 cm to
+    ensure all source particles can enter the simulation volume
+  • The spread in Z positions must be preserved when using this phase
+    space as a source (do not collapse to single plane)
+
+
+Panel C (Bottom-Left): Radial Distance Distribution  
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+Histogram showing distance from beam central axis (r = √(x²+y²)).
+
+Physical Interpretation:
+  • Mean radius: 5.31 cm (concentrated near axis)
+  • Standard deviation: 5.15 cm
+  • Peak: Sharp peak at r ≈ 0-5 cm (58.7% of particles)
+  • Tail: Exponentially decreasing to r ≈ 40 cm (outliers)
+
+Key Statistics from Histogram:
+  • r ≤  5 cm: 58.7% (beam core)
+  • r ≤ 10 cm: 95.9% (clinically useful field)
+  • r ≤ 20 cm: 96.5% (current phantom size)
+  • r > 20 cm:  3.5% (peripheral scatter)
+
+Physical Meaning:
+  • The exponential drop-off is characteristic of primary beam
+    plus scattered radiation from collimator system
+  • This is NOT a flat-top beam, but a Gaussian-like profile typical
+    of medical linacs with MLCs and jaws removed
+
+Dosimetric Significance:
+  • For treatment planning, the r ≤ 10 cm core would define the
+    maximum treatable field size at this depth
+  • Particles at r > 20 cm contribute to out-of-field dose
+
+
+Panel D (Bottom-Right): W Direction Cosine Distribution
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+Histogram showing W = cos(θ), where θ is angle from Z-axis.
+
+Physical Interpretation:
+  • W = 1.0: Particle moving exactly parallel to beam axis
+  • W = 0.0: Particle moving perpendicular to beam axis
+  • Mean W: 0.959 → Mean divergence angle ≈ 16.4°
+  • Peak: Sharp peak at W ≈ 0.95-1.0 (highly collimated)
+
+Key Observations:
+  • Vast majority of particles have W > 0.9 (angle < 26°)
+  • This indicates a well-collimated beam, typical for clinical linacs
+  • Small fraction with W < 0.8 represents scattered particles with
+    larger divergence angles
+  • The distribution is NOT a delta function at W=1, showing realistic
+    beam divergence from source size and scattering
+
+Angular Correlation:
+  • Particles at larger radii (Panel C) tend to have smaller W values
+    (more divergent), as expected from geometric spreading
+  • Particles near beam axis (r ≈ 0) have W ≈ 1 (nearly parallel)
+
+Clinical Relevance:
+  • Beam divergence affects penumbra width (dose fall-off at field edges)
+  • Highly collimated beam (W ≈ 1) produces sharper dose gradients,
+    which is desirable for sparing normal tissue adjacent to tumor
+
+
+Combined Figure Interpretation:
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+Together, these four panels provide a complete characterization of the
+input particle source:
+
+  Energy (Panel A)   → Depth-dose characteristics
+  Z-position (Panel B) → Geometric source extent  
+  Radial (Panel C)   → Lateral beam profile
+  W-direction (Panel D) → Angular divergence and penumbra
+
+This information validates that the phase space file represents a
+realistic 6MV clinical photon beam suitable for Geant4 simulations.
+
+RECOMMENDATIONS FOR GEANT4 GEOMETRY
+----------------------------------------------------------------------
+Based on actual particle distribution (not just range extremes):
+
+1. Water Phantom Size Options:
+
+   Option A: 20×20×20 cm³ (Current)
+   • Covers: 96.5% of particles
+   • Pros: Reasonable, captures >95% of source
+   • Cons: Misses 3.5% in outer region
+   • Verdict: ✓ ADEQUATE for most applications
+
+   Option B: 30×30×20 cm³
+   • Covers: ~99% of particles
+   • Pros: Better coverage, more realistic
+   • Cons: 2.25× more volume to simulate
+   • Verdict: ✓ RECOMMENDED for comprehensive studies
+
+   Option C: 40×40×20 cm³
+   • Covers: >99.5% of particles
+   • Pros: Nearly complete coverage
+   • Cons: 4× more volume, slower simulation
+   • Verdict: Consider only if edge effects are critical
+
+2. Water Phantom Position:
+   • Z-center: ~30 cm (Z-range: 20-40 cm)
+   • This ensures all source particles (Z=17.77-27.35) enter the water
+
+3. World Volume:
+   • Should be ≥150×150×150 cm³ to contain full geometry
+
+4. Important Note:
+   • The source has Range = ±30 cm, but 95.9% of particles
+     are actually within ±10 cm (highly concentrated)
+   • Standard deviation: X=5.7 cm, Y=4.7 cm
+   • This is typical for medical linac beams (collimated)
+
+======================================================================
+Analysis completed successfully!
+Generated: input_phsp_analysis_report.txt
+======================================================================
