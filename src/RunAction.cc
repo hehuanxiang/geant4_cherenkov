@@ -4,6 +4,7 @@
 
 #include "RunAction.hh"
 #include "EventAction.hh"
+#include "RunMetadata.hh"
 
 #include "G4Run.hh"
 #include "G4RunManager.hh"
@@ -259,6 +260,25 @@ void RunAction::EndOfRunAction(const G4Run* run)
   
   G4cout << "======================================" << G4endl;
   G4cout << G4endl;
+
+  // 写出本次 Run 的元数据 JSON，便于后处理和追踪
+  // 元数据文件路径：与 .phsp/.header 同目录，名为 "<base>.run_meta.json"
+  long cpuSecondsLong = totalCpuSeconds;  // 已是 long
+#ifdef G4MULTITHREADED
+  int nThreads = G4MTRunManager::GetMasterRunManager()->GetNumberOfThreads();
+#else
+  int nThreads = 1;
+#endif
+  RunMetadata::Write(
+    fOutputBasePath + ".run_meta.json",
+    run,
+    fOutputBasePath,
+    fOutputFormat,
+    wallSeconds,
+    cpuSecondsLong,
+    static_cast<long>(EventAction::GetTotalPhotonCount()),
+    nThreads
+  );
 }
 
 void RunAction::RecordPhotonData(G4double initX, G4double initY, G4double initZ,

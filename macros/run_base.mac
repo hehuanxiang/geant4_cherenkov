@@ -1,0 +1,17 @@
+# Base macro for batch mode - shared setup (no beamOn)
+#
+# Set verbosity
+/control/verbose 1
+/run/verbose 0
+/event/verbose 0
+/tracking/verbose 0
+
+# Set random seed for reproducibility
+/random/setSeeds 12345 67890
+
+# Initialize kernel
+/run/initialize
+
+# Print progress every N events (can be overridden in other macros if needed)
+/run/printProgress 1000000
+

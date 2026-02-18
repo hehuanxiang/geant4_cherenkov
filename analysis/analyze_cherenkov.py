@@ -117,10 +117,14 @@ def plot_01_energy_distribution(data):
 def plot_02_init_position_xy(data):
     """Plot 2: Initial Position X-Y with colorbar"""
     fig, ax = plt.subplots(figsize=(10, 10))
-    h = ax.hist2d(data['init_x'], data['init_y'], bins=100, cmap='inferno')
+    vmax = data.get('_xy_hist_vmax')
+    kwargs = {'cmap': 'viridis'}
+    if vmax is not None:
+        kwargs['vmin'], kwargs['vmax'] = 0, vmax
+    h = ax.hist2d(data['init_x'], data['init_y'], bins=100, **kwargs)
     ax.set_xlabel('Initial X (cm)', fontsize=12)
     ax.set_ylabel('Initial Y (cm)', fontsize=12)
-    ax.set_title('Cherenkov Photon Production Location: X-Y Plane\n(Color = Photon Density)', 
+    ax.set_title('Photon Initial Position: X-Y Plane\n(Color = Photon Density)', 
                  fontsize=14, fontweight='bold')
     cbar = plt.colorbar(h[3], ax=ax, label='Count', shrink=0.9)
     ax.set_aspect('equal')
@@ -172,7 +176,11 @@ def plot_06_direction_change_angle(data):
 def plot_07_final_position_xy(data):
     """Plot 7: Final Position X-Y"""
     fig, ax = plt.subplots(figsize=(10, 10))
-    h = ax.hist2d(data['final_x'], data['final_y'], bins=100, cmap='viridis')
+    vmax = data.get('_xy_hist_vmax')
+    kwargs = {'cmap': 'viridis'}
+    if vmax is not None:
+        kwargs['vmin'], kwargs['vmax'] = 0, vmax
+    h = ax.hist2d(data['final_x'], data['final_y'], bins=100, **kwargs)
     ax.set_xlabel('Final X (cm)', fontsize=12)
     ax.set_ylabel('Final Y (cm)', fontsize=12)
     ax.set_title('Photon Final Position: X-Y Plane\n(Color = Photon Density)', 
@@ -198,8 +206,11 @@ def plot_09_displacement_vs_energy(data):
     sample_idx = np.random.choice(len(data['energy']), sample_size, replace=False)
     
     fig, ax = plt.subplots(figsize=(12, 7))
+    vmin_ac = data.get('_angle_change_vmin')
+    vmax_ac = data.get('_angle_change_vmax')
     scatter = ax.scatter(data['energy'][sample_idx], data['displacement'][sample_idx], 
-                        c=data['angle_change'][sample_idx], cmap='rainbow', alpha=0.4, s=15)
+                        c=data['angle_change'][sample_idx], cmap='rainbow', alpha=0.4, s=15,
+                        vmin=vmin_ac, vmax=vmax_ac)
     ax.set_xlabel('Photon Energy (MeV)', fontsize=12)
     ax.set_ylabel('Displacement Distance (cm)', fontsize=12)
     ax.set_title('Photon Displacement vs Energy (colored by direction change)', 
@@ -383,7 +394,11 @@ def plot_15_statistical_summary(data):
     ax3.legend(fontsize=8, loc='upper right')
 
     ax4 = fig.add_subplot(gs[1, 0])
-    h4 = ax4.hist2d(data['init_x'], data['init_y'], bins=100, cmap='inferno')
+    vmax_xy = data.get('_xy_hist_vmax')
+    kwargs4 = {'cmap': 'viridis'}
+    if vmax_xy is not None:
+        kwargs4['vmin'], kwargs4['vmax'] = 0, vmax_xy
+    h4 = ax4.hist2d(data['init_x'], data['init_y'], bins=100, **kwargs4)
     ax4.set_xlabel('Initial X (cm)', fontsize=9)
     ax4.set_ylabel('Initial Y (cm)', fontsize=9)
     ax4.set_title('Initial X-Y', fontsize=10, fontweight='bold')
@@ -391,7 +406,10 @@ def plot_15_statistical_summary(data):
     plt.colorbar(h4[3], ax=ax4, label='Count', shrink=0.8)
 
     ax5 = fig.add_subplot(gs[1, 1])
-    h5 = ax5.hist2d(data['final_x'], data['final_y'], bins=100, cmap='viridis')
+    kwargs5 = {'cmap': 'viridis'}
+    if vmax_xy is not None:
+        kwargs5['vmin'], kwargs5['vmax'] = 0, vmax_xy
+    h5 = ax5.hist2d(data['final_x'], data['final_y'], bins=100, **kwargs5)
     ax5.set_xlabel('Final X (cm)', fontsize=9)
     ax5.set_ylabel('Final Y (cm)', fontsize=9)
     ax5.set_title('Final X-Y', fontsize=10, fontweight='bold')
@@ -399,8 +417,11 @@ def plot_15_statistical_summary(data):
     plt.colorbar(h5[3], ax=ax5, label='Count', shrink=0.8)
 
     ax6 = fig.add_subplot(gs[1, 2])
+    vmin_ac = data.get('_angle_change_vmin')
+    vmax_ac = data.get('_angle_change_vmax')
     scatter = ax6.scatter(data['energy'][sample_idx], data['displacement'][sample_idx], 
-                         c=data['angle_change'][sample_idx], cmap='rainbow', s=5, alpha=0.5)
+                         c=data['angle_change'][sample_idx], cmap='rainbow', s=5, alpha=0.5,
+                         vmin=vmin_ac, vmax=vmax_ac)
     ax6.set_xlabel('Energy (MeV)', fontsize=9)
     ax6.set_ylabel('Displacement (cm)', fontsize=9)
     ax6.set_title('Energy-Displacement-Angle', fontsize=10, fontweight='bold')
@@ -460,6 +481,13 @@ def main():
     # Load data ONCE
     data = load_and_process_data()
     
+    # Common color scale for plot 2 & 7 (init/final position X-Y) so colorbars are comparable
+    H1 = np.histogram2d(data['init_x'], data['init_y'], bins=100)[0]
+    H2 = np.histogram2d(data['final_x'], data['final_y'], bins=100)[0]
+    data['_xy_hist_vmax'] = max(H1.max(), H2.max())
+    # Common color scale for plot 9 & 15 (scatter colored by direction change)
+    data['_angle_change_vmin'] = data['angle_change'].min()
+    data['_angle_change_vmax'] = data['angle_change'].max()
     # Generate plots
     print("Generating plots...")
     for plot_num in range(1, 16):

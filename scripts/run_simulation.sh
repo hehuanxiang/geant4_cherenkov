@@ -1,6 +1,10 @@
 #!/bin/bash
 # Run script for Cherenkov simulation with proper GEANT4 environment
 
+# Resolve project root (two levels up from this script)
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+PROJECT_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
+
 # Source GEANT4 environment
 source /home/xhh2c/Applications/GEANT4/geant4-install/bin/geant4.sh
 
@@ -21,13 +25,13 @@ export G4TENDLDATA=/home/xhh2c/Applications/GEANT4/G4DATA/G4TENDL1.4
 echo "GEANT4 environment configured"
 echo "Running Cherenkov simulation..."
 
-cd /home/xhh2c/project/geant4_cherenkov/build
+cd "$PROJECT_ROOT/build"
 
 # Create output directory if it doesn't exist
-mkdir -p /home/xhh2c/project/geant4_cherenkov/output
+mkdir -p "$PROJECT_ROOT/output"
 
 # Create log directory if it doesn't exist
-LOG_DIR="/home/xhh2c/project/geant4_cherenkov/log"
+LOG_DIR="$PROJECT_ROOT/log"
 mkdir -p "$LOG_DIR"
 
 # Copy/Link config.json to build directory for easy access
@@ -49,7 +53,7 @@ LOG_FILE="$LOG_DIR/simulation_$(date +%Y%m%d_%H%M%S).log"
 } | tee "$LOG_FILE"
 
 if [ "$1" == "test" ]; then
-  echo "Running test configuration (100 events)..." | tee -a "$LOG_FILE"
+  echo "Running test configuration (100 events, via --mode test)..." | tee -a "$LOG_FILE"
   
   # Read output_format from config.json to determine file extension
   OUTPUT_FORMAT=$(python3 -c "import json; config = json.load(open('../config.json')); print(config.get('output_format', 'binary'))" 2>/dev/null || echo "binary")
@@ -60,12 +64,12 @@ if [ "$1" == "test" ]; then
   fi
   
   # Temporarily update output file path for test run (remove extension requirement)
-  sed -i 's|"output_file_path": ".*/cherenkov_photons[^"]*"|"output_file_path": "/home/xhh2c/project/geant4_cherenkov/output/cherenkov_photons_test"|' ../config.json
-  OUTPUT_FILE="/home/xhh2c/project/geant4_cherenkov/output/cherenkov_photons_test.${OUTPUT_EXT}"
+  sed -i "s|\"output_file_path\": \".*/cherenkov_photons[^\"]*\"|\"output_file_path\": \"${PROJECT_ROOT}/output/cherenkov_photons_test\"|" ../config.json
+  OUTPUT_FILE="${PROJECT_ROOT}/output/cherenkov_photons_test.${OUTPUT_EXT}"
   echo "Output format: $OUTPUT_FORMAT | Output file: $OUTPUT_FILE" | tee -a "$LOG_FILE"
-  ./CherenkovSim --config ../config.json ../test.mac 2>&1 | tee -a "$LOG_FILE"
+  ./CherenkovSim --config ../config.json --mode test --macro ../macros/run_base.mac 2>&1 | tee -a "$LOG_FILE"
 elif [ "$1" == "full" ]; then
-  echo "Running full simulation (52,302,569 events - complete PHSP)..." | tee -a "$LOG_FILE"
+  echo "Running full simulation (52,302,569 events - complete PHSP, via --mode full)..." | tee -a "$LOG_FILE"
   
   # Read output_format from config.json to determine file extension
   OUTPUT_FORMAT=$(python3 -c "import json; config = json.load(open('../config.json')); print(config.get('output_format', 'binary'))" 2>/dev/null || echo "binary")
@@ -76,20 +80,20 @@ elif [ "$1" == "full" ]; then
   fi
   
   # Temporarily update output file path for full run (remove extension requirement)
-  sed -i 's|"output_file_path": ".*/cherenkov_photons[^"]*"|"output_file_path": "/home/xhh2c/project/geant4_cherenkov/output/cherenkov_photons_full"|' ../config.json
-  OUTPUT_FILE="/home/xhh2c/project/geant4_cherenkov/output/cherenkov_photons_full.${OUTPUT_EXT}"
+  sed -i "s|\"output_file_path\": \".*/cherenkov_photons[^\"]*\"|\"output_file_path\": \"${PROJECT_ROOT}/output/cherenkov_photons_full\"|" ../config.json
+  OUTPUT_FILE="${PROJECT_ROOT}/output/cherenkov_photons_full.${OUTPUT_EXT}"
   echo "Output format: $OUTPUT_FORMAT | Output file: $OUTPUT_FILE" | tee -a "$LOG_FILE"
-  ./CherenkovSim --config ../config.json ../run.mac 2>&1 | tee -a "$LOG_FILE"
+  ./CherenkovSim --config ../config.json --mode full --macro ../macros/run_base.mac 2>&1 | tee -a "$LOG_FILE"
 elif [ -z "$1" ]; then
   echo "Usage: $0 [test|full|<macro_file>] [--config <config_file>]" | tee -a "$LOG_FILE"
-  echo "  test                            - Run 100 events (quick test)" | tee -a "$LOG_FILE"
-  echo "  full                            - Run 52,302,569 events (complete PHSP)" | tee -a "$LOG_FILE"
+  echo "  test                            - Run 100 events (quick test, via --mode test)" | tee -a "$LOG_FILE"
+  echo "  full                            - Run 52,302,569 events (complete PHSP, via --mode full)" | tee -a "$LOG_FILE"
   echo "  <macro_file>                    - Run with custom macro file" | tee -a "$LOG_FILE"
   echo "  --config <config_file>          - Use custom config file (optional)" | tee -a "$LOG_FILE"
   echo "" | tee -a "$LOG_FILE"
   echo "Examples:" | tee -a "$LOG_FILE"
-  echo "  bash run_simulation.sh test" | tee -a "$LOG_FILE"
-  echo "  bash run_simulation.sh run.mac --config my_config.json" | tee -a "$LOG_FILE"
+  echo "  bash scripts/run_simulation.sh test" | tee -a "$LOG_FILE"
+  echo "  bash scripts/run_simulation.sh run.mac --config my_config.json" | tee -a "$LOG_FILE"
 else
   # Check if second argument is --config
   if [ "$2" == "--config" ] && [ -n "$3" ]; then
@@ -110,3 +114,4 @@ fi
   echo "Log saved to: $LOG_FILE"
   echo "==============================================="
 } | tee -a "$LOG_FILE"
+

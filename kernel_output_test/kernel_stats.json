@@ -1,0 +1,54 @@
+{
+  "photons_read": 2101,
+  "photons_in_voxel_grid": 2099,
+  "photons_outside_grid": 2,
+  "fraction_outside": 0.000952,
+  "n_primaries": 100,
+  "mean_photons_per_primary_file": 21.01,
+  "mean_photons_per_primary_in_grid": 20.99,
+  "water_bounds_cm": {
+    "x_min": -10.0,
+    "x_max": 10.0,
+    "y_min": -10.0,
+    "y_max": 10.0,
+    "z_min": 20.0,
+    "z_max": 40.0
+  },
+  "grid_shape": [
+    67,
+    67,
+    67
+  ],
+  "voxel_edges_summary": {
+    "x": {
+      "min": -10.0,
+      "max": 10.0,
+      "n_bins": 67
+    },
+    "y": {
+      "min": -10.0,
+      "max": 10.0,
+      "n_bins": 67
+    },
+    "z": {
+      "min": 20.0,
+      "max": 40.0,
+      "n_bins": 67
+    }
+  },
+  "voxel_size_nominal_cm": 0.3,
+  "kernel_stats": {
+    "max": 1.09,
+    "mean_nonzero": 0.31803030303030305,
+    "total_sum": 20.99
+  },
+  "run_info": {
+    "phsp_path": "/home/xhh2c/project/geant4_cherenkov/output/cherenkov_photons_test.phsp",
+    "config_path": "/home/xhh2c/project/geant4_cherenkov/config.json",
+    "xy_range": [
+      -10.0,
+      10.0
+    ],
+    "timestamp": "2026-02-17T20:38:24.398780"
+  }
+}

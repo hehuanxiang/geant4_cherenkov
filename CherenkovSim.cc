@@ -26,28 +26,65 @@
 #include "G4SystemOfUnits.hh"        // 【GEANT4 内核】单位系统
 #include "Randomize.hh"              // 【GEANT4 内核】随机数工具
 
+// 运行模式：用于集中控制 test / full / custom 等
+struct RunModeConfig {
+  enum class Mode {
+    None,
+    Test,
+    Full,
+    Custom
+  };
+
+  Mode     mode = Mode::None;
+  G4int    events = 0;           // 若 >0，则用于 /run/beamOn 的事件数
+  G4String macroFilePath = "";   // 要执行的基础宏（推荐不含 beamOn）
+};
 
 int main(int argc, char** argv)
 {
   // ====================== 解析命令行参数 ======================
-  // 支持: ./CherenkovSim [--config <config_file>] [macro_file]
+  // 支持:
+  //   ./CherenkovSim [--config <config_file>] [macro_file]
+  //   ./CherenkovSim --config <cfg> --mode test|full|custom [--events N] [--macro file.mac]
   G4String configFilePath = "config.json";  // 默认配置文件名
-  G4String macroFilePath = "";
-  
+  RunModeConfig runCfg;
+
   int argcForUI = 1;  // 为UI保留程序名
   char** argvForUI = new char*[argc];
   argvForUI[0] = argv[0];  // 保留程序名
-  
-  // 检查是否指定了config文件，并构建传给UI的清洁参数列表
+
+  // 检查是否指定了config文件、运行模式以及宏文件
   for (int i = 1; i < argc; i++) {
     G4String arg = argv[i];
     if (arg == "--config" || arg == "-c") {
       if (i + 1 < argc) {
         configFilePath = argv[++i];  // 获取下一个参数作为config文件路径
       }
-    } else if (arg[0] != '-' && macroFilePath.empty()) {
-      // 第一个非选项参数是macro文件
-      macroFilePath = arg;
+    } else if (arg == "--mode") {
+      if (i + 1 < argc) {
+        G4String m = argv[++i];
+        if (m == "test") {
+          runCfg.mode = RunModeConfig::Mode::Test;
+        } else if (m == "full") {
+          runCfg.mode = RunModeConfig::Mode::Full;
+        } else if (m == "custom") {
+          runCfg.mode = RunModeConfig::Mode::Custom;
+        } else {
+          G4cerr << "Unknown mode: " << m << G4endl;
+        }
+      }
+    } else if (arg == "--events") {
+      if (i + 1 < argc) {
+        runCfg.events = std::atoi(argv[++i]);
+      }
+    } else if (arg == "--macro") {
+      if (i + 1 < argc) {
+        runCfg.macroFilePath = argv[++i];
+        argvForUI[argcForUI++] = argv[i];  // 只传递macro文件给UI
+      }
+    } else if (arg[0] != '-' && runCfg.macroFilePath.empty()) {
+      // 兼容旧用法：第一个非选项参数是macro文件
+      runCfg.macroFilePath = arg;
       argvForUI[argcForUI++] = argv[i];  // 只传递macro文件给UI
     }
   }
@@ -63,7 +100,7 @@ int main(int argc, char** argv)
   // ====================== 运行模式判断 ======================
   // 【程序流程】是否进入交互模式
   G4UIExecutive* ui = nullptr;
-  if (argcForUI == 1) {
+  if (argcForUI == 1 && runCfg.macroFilePath.empty()) {
     // 交互模式：没有指定macro文件
     ui = new G4UIExecutive(argcForUI, argvForUI);  // 【GEANT4 内核】
   }
@@ -112,8 +149,34 @@ int main(int argc, char** argv)
   // ====================== 执行阶段 ======================
   if (!ui) {
     // 【程序流程】Batch 模式
-    G4String command = "/control/execute ";
-    UImanager->ApplyCommand(command + macroFilePath);
+    if (!runCfg.macroFilePath.empty()) {
+      G4String command = "/control/execute ";
+      UImanager->ApplyCommand(command + runCfg.macroFilePath);
+    }
+
+    // 若指定了运行模式，并且事件数已确定，则在基础宏之后统一发出 /run/beamOn
+    if (runCfg.mode != RunModeConfig::Mode::None) {
+      G4int beamOnEvents = 0;
+      if (runCfg.mode == RunModeConfig::Mode::Test) {
+        // Test 模式默认 100 事件，若用户通过 --events 指定则覆盖
+        beamOnEvents = (runCfg.events > 0) ? runCfg.events : 100;
+      } else if (runCfg.mode == RunModeConfig::Mode::Full) {
+        // Full 模式默认使用完整 PHSP 事件数（52,302,569），可被 --events 覆盖
+        beamOnEvents = (runCfg.events > 0) ? runCfg.events : 52302569;
+      } else if (runCfg.mode == RunModeConfig::Mode::Custom) {
+        // Custom 模式必须显式指定事件数
+        if (runCfg.events <= 0) {
+          G4cerr << "Custom mode requires --events <N>" << G4endl;
+        } else {
+          beamOnEvents = runCfg.events;
+        }
+      }
+
+      if (beamOnEvents > 0) {
+        G4String beamOnCmd = "/run/beamOn " + std::to_string(beamOnEvents);
+        UImanager->ApplyCommand(beamOnCmd);
+      }
+    }
   }
   else {
     // 【程序流程】Interactive 模式
