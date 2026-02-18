@@ -413,7 +413,7 @@ geant4_cherenkov/
 ### 核心脚本和工具
 
 #### Python脚本
-- `build_cherenkov_kernel.py` - 从二进制 PHSP 构建 3D Cherenkov 体素核 K(x,y,z)，输出 kernel_01~04 与 4 张图（见「Cherenkov 体素核的生成与使用」）
+- `analysis/build_cherenkov_kernel.py` - 从二进制 PHSP 构建 3D Cherenkov 体素核 K(x,y,z)，输出 kernel_01~04 与 4 张图（见「Cherenkov 体素核的生成与使用」）
 - `analyze_cherenkov.py` (22 KB) - 完整数据分析脚本（支持14亿光子）
 - `analyze_cherenkov_fast.py` (21 KB) - 快速分析脚本（采样模式，推荐日常使用）
 - `read_binary_phsp.py` (4.1 KB) - 二进制相空间文件读取工具
@@ -435,9 +435,9 @@ geant4_cherenkov/
 #### output/ - 输出数据
 - `cherenkov_photons_full.phsp` (68 GB) - 完整二进制相空间数据（1,399,500,645光子）
 - `cherenkov_photons_full.header` - 二进制文件头描述
-- `cherenkov_photons_full.run_meta.json` - Run 元数据（事件数、总光子数等，供 build_cherenkov_kernel.py 使用）
+- `cherenkov_photons_full.run_meta.json` - Run 元数据（事件数、总光子数等，供 analysis/build_cherenkov_kernel.py 使用）
 
-#### kernel_output/ - 体素核输出（由 build_cherenkov_kernel.py 生成）
+#### kernel_output/ - 体素核输出（由 analysis/build_cherenkov_kernel.py 生成）
 - `kernel_01_counts.npy`、`kernel_02_normalized.npy`、`kernel_03_uncertainty.npy`、`kernel_04_voxel_edges.npz` - 核数组与体素边界
 - `kernel_stats.json`、`kernel_stats.txt` - 统计信息（含 photons_outside_grid、边界外光子占比等，便于程序读取或人工查看）
 - `plot_01_xy_slice_center_z.png` ～ `plot_04_radial_profile_Kr.png` - 四张核可视化图
@@ -610,7 +610,7 @@ python3 analyze_cherenkov.py
 
 ### 2. 输入文件与使用方式
 
-脚本 `build_cherenkov_kernel.py` 会**自动查找**以下文件（路径可由命令行覆盖）：
+脚本 `analysis/build_cherenkov_kernel.py` 会**自动查找**以下文件（路径可由命令行覆盖）：
 
 | 文件 | 来源/位置 | 用途 |
 |------|-----------|------|
@@ -678,17 +678,17 @@ python3 analyze_cherenkov.py
 cd /home/xhh2c/project/geant4_cherenkov
 
 # 使用默认路径（需有 output/cherenkov_photons_full.phsp 与同目录 run_meta）
-python3 build_cherenkov_kernel.py
+python3 analysis/build_cherenkov_kernel.py
 
 # 仅分析 xy ∈ [-10, 10] cm（束流集中区域，约 96% 粒子）
-python3 build_cherenkov_kernel.py --xy-range -10 10
+python3 analysis/build_cherenkov_kernel.py --xy-range -10 10
 
 # 指定 PHSP、config、输出目录、N_primaries（无 run_meta 时）
-python3 build_cherenkov_kernel.py --phsp output/cherenkov_photons_full.phsp \
+python3 analysis/build_cherenkov_kernel.py --phsp output/cherenkov_photons_full.phsp \
   --config config.json --output-dir kernel_output --n-primaries 52302569
 
 # 小数据测试
-python3 build_cherenkov_kernel.py --phsp output/cherenkov_photons_test.phsp \
+python3 analysis/build_cherenkov_kernel.py --phsp output/cherenkov_photons_test.phsp \
   --output-dir kernel_output_test --xy-range -10 10
 ```
 
