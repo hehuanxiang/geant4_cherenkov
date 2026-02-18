@@ -39,3 +39,6 @@ build/
 
 # plot files
 plot/
+
+# kernel
+kernel_output/
