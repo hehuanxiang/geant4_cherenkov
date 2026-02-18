@@ -56,32 +56,32 @@ if [ "$1" == "test" ]; then
   echo "Running test configuration (100 events, via --mode test)..." | tee -a "$LOG_FILE"
   
   # Read output_format from config.json to determine file extension
-  OUTPUT_FORMAT=$(python3 -c "import json; config = json.load(open('../config.json')); print(config.get('output_format', 'binary'))" 2>/dev/null || echo "binary")
+  OUTPUT_FORMAT=$(python3 -c "import json; config = json.load(open('../config.json')); print(config.get('simulation', {}).get('output_format', 'binary'))" 2>/dev/null || echo "binary")
   if [ "$OUTPUT_FORMAT" == "csv" ]; then
     OUTPUT_EXT="csv"
   else
     OUTPUT_EXT="phsp"
   fi
   
-  # Temporarily update output file path for test run (remove extension requirement)
-  sed -i "s|\"output_file_path\": \".*/cherenkov_photons[^\"]*\"|\"output_file_path\": \"${PROJECT_ROOT}/output/cherenkov_photons_test\"|" ../config.json
-  OUTPUT_FILE="${PROJECT_ROOT}/output/cherenkov_photons_test.${OUTPUT_EXT}"
+  # Read output_file_path from config.json (respect user's setting)
+  OUTPUT_BASE=$(python3 -c "import json; config = json.load(open('../config.json')); print(config.get('simulation', {}).get('output_file_path', '${PROJECT_ROOT}/output/cherenkov_photons_test').strip())" 2>/dev/null || echo "${PROJECT_ROOT}/output/cherenkov_photons_test")
+  OUTPUT_FILE="${OUTPUT_BASE}.${OUTPUT_EXT}"
   echo "Output format: $OUTPUT_FORMAT | Output file: $OUTPUT_FILE" | tee -a "$LOG_FILE"
   ./CherenkovSim --config ../config.json --mode test --macro ../macros/run_base.mac 2>&1 | tee -a "$LOG_FILE"
 elif [ "$1" == "full" ]; then
   echo "Running full simulation (52,302,569 events - complete PHSP, via --mode full)..." | tee -a "$LOG_FILE"
   
   # Read output_format from config.json to determine file extension
-  OUTPUT_FORMAT=$(python3 -c "import json; config = json.load(open('../config.json')); print(config.get('output_format', 'binary'))" 2>/dev/null || echo "binary")
+  OUTPUT_FORMAT=$(python3 -c "import json; config = json.load(open('../config.json')); print(config.get('simulation', {}).get('output_format', 'binary'))" 2>/dev/null || echo "binary")
   if [ "$OUTPUT_FORMAT" == "csv" ]; then
     OUTPUT_EXT="csv"
   else
     OUTPUT_EXT="phsp"
   fi
   
-  # Temporarily update output file path for full run (remove extension requirement)
-  sed -i "s|\"output_file_path\": \".*/cherenkov_photons[^\"]*\"|\"output_file_path\": \"${PROJECT_ROOT}/output/cherenkov_photons_full\"|" ../config.json
-  OUTPUT_FILE="${PROJECT_ROOT}/output/cherenkov_photons_full.${OUTPUT_EXT}"
+  # Read output_file_path from config.json (respect user's setting)
+  OUTPUT_BASE=$(python3 -c "import json; config = json.load(open('../config.json')); print(config.get('simulation', {}).get('output_file_path', '${PROJECT_ROOT}/output/cherenkov_photons_full').strip())" 2>/dev/null || echo "${PROJECT_ROOT}/output/cherenkov_photons_full")
+  OUTPUT_FILE="${OUTPUT_BASE}.${OUTPUT_EXT}"
   echo "Output format: $OUTPUT_FORMAT | Output file: $OUTPUT_FILE" | tee -a "$LOG_FILE"
   ./CherenkovSim --config ../config.json --mode full --macro ../macros/run_base.mac 2>&1 | tee -a "$LOG_FILE"
 elif [ -z "$1" ]; then

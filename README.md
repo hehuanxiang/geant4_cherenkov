@@ -433,9 +433,13 @@ geant4_cherenkov/
 ### 数据文件目录
 
 #### output/ - 输出数据
-- `cherenkov_photons_full.phsp` (68 GB) - 完整二进制相空间数据（1,399,500,645光子）
+- `cherenkov_photons_full.phsp` (68 GB) - 完整二进制相空间数据（1,398,846,136光子）
 - `cherenkov_photons_full.header` - 二进制文件头描述
 - `cherenkov_photons_full.run_meta.json` - Run 元数据（事件数、总光子数等，供 analysis/build_cherenkov_kernel.py 使用）
+- 当 `enable_dose_output: true` 且 `output_format: binary` 时还会生成：
+  - `cherenkov_photons_full.dose` (38 GB) - 能量沉积二进制数据（1,117,618,481条记录，36 字节/条）
+  - `cherenkov_photons_full.dose.header` - Dose 文件头描述
+  - run_meta 中增加 `total_deposits`（总沉积数）、`dose_output_path`（输出路径）、`dose_deposits_without_primary`（无原粒子顶点的沉积数）
 
 #### kernel_output/ - 体素核输出（由 analysis/build_cherenkov_kernel.py 生成）
 - `kernel_01_counts.npy`、`kernel_02_normalized.npy`、`kernel_03_uncertainty.npy`、`kernel_04_voxel_edges.npz` - 核数组与体素边界
@@ -502,10 +506,59 @@ geant4_cherenkov/
   "simulation": {
     "output_format": "binary",
     "buffer_size": 100000,
-    "output_file_path": ".../cherenkov_photons_full"
+    "output_file_path": ".../cherenkov_photons_full",
+    "enable_cherenkov_output": true,
+    "enable_dose_output": false,
+    "dose_output_path": "",
+    "dose_buffer_size": 100000
   }
 }
 ```
+- **enable_cherenkov_output**（默认 true）、**enable_dose_output**（默认 false）可独立开关 Cherenkov 光子输出与 Dose 原始能量沉积输出。
+- Dose 仅在 **binary** 模式下生效；`dose_output_path` 为空时与 Cherenkov 同 base，输出 `base.dose`、`base.dose.header`；run_meta 中会包含 `total_deposits`、`dose_output_path`、`dose_deposits_without_primary`。详见 `BINARY_OUTPUT_README.md`。
+
+#### 三种输出模式
+
+**1. Cherenkov ONLY（默认模式，推荐）**
+```json
+{
+  "simulation": {
+    "output_format": "binary",
+    "enable_cherenkov_output": true,
+    "enable_dose_output": false
+  }
+}
+```
+- 只输出 Cherenkov 光子数据（`.phsp`、`.header`）
+- 文件更小，运行更快
+- 适用于大多数 Cherenkov 光分析场景
+
+**2. Dose ONLY**
+```json
+{
+  "simulation": {
+    "output_format": "binary",
+    "enable_cherenkov_output": false,
+    "enable_dose_output": true
+  }
+}
+```
+- 只输出能量沉积数据（`.dose`、`.dose.header`）
+- 适用于剂量计算分析
+
+**3. Both（同时输出）**
+```json
+{
+  "simulation": {
+    "output_format": "binary",
+    "enable_cherenkov_output": true,
+    "enable_dose_output": true
+  }
+}
+```
+- 同时输出 Cherenkov 光子和能量沉积
+- 文件最大，运行时间最长
+- 适用于需要同时分析光子和剂量的场景
 
 #### 读取数据（Python）
 ```python
@@ -755,7 +808,7 @@ grep -i "loaded.*particles" log/simulation_*.log
 
 - **项目总大小**: ~68 GB
 - **主要占用**: 
-  - 二进制数据文件: 68 GB (1,399,500,645光子)
+  - 二进制数据文件: 68 GB (1,398,846,136光子)
   - 可视化图表: 22 MB
   - 源代码和构建文件: <1 GB
   - 日志文件: <100 MB

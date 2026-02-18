@@ -199,3 +199,36 @@ int Config::GetBufferSize() const
   }
   return 100000;
 }
+
+bool Config::GetEnableCherenkovOutput() const
+{
+  if (fConfig["simulation"].contains("enable_cherenkov_output")) {
+    return fConfig["simulation"]["enable_cherenkov_output"].get<bool>();
+  }
+  return true;
+}
+
+bool Config::GetEnableDoseOutput() const
+{
+  if (fConfig["simulation"].contains("enable_dose_output")) {
+    return fConfig["simulation"]["enable_dose_output"].get<bool>();
+  }
+  return false;
+}
+
+std::string Config::GetDoseOutputFilePath() const
+{
+  if (fConfig["simulation"].contains("dose_output_path")) {
+    std::string p = fConfig["simulation"]["dose_output_path"].get<std::string>();
+    if (!p.empty()) return p;
+  }
+  return fConfig["simulation"]["output_file_path"].get<std::string>();
+}
+
+int Config::GetDoseBufferSize() const
+{
+  if (fConfig["simulation"].contains("dose_buffer_size")) {
+    return fConfig["simulation"]["dose_buffer_size"].get<int>();
+  }
+  return GetBufferSize();
+}

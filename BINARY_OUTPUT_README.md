@@ -14,23 +14,37 @@ Implemented TOPAS-style buffer-based binary output system for Geant4 Cherenkov s
 
 ## Configuration
 
-Edit `config.json` to choose output format:
+Edit `config.json` to choose output format and optional Cherenkov/Dose switches:
 
 ```json
 {
   "simulation": {
     "output_file_path": "/path/to/output",
-    "output_format": "binary",    // Options: "binary" or "csv"
-    "buffer_size": 100000          // Photons per buffer (default: 100000)
+    "output_format": "binary",
+    "buffer_size": 100000,
+    "enable_cherenkov_output": true,
+    "enable_dose_output": false,
+    "dose_output_path": "",
+    "dose_buffer_size": 100000
   }
 }
 ```
 
+- **enable_cherenkov_output** (default: true): When false, no Cherenkov photon output (`.phsp`/`.header`).
+- **enable_dose_output** (default: false): When true and `output_format` is `"binary"`, write dose raw energy deposit binary (`.dose`/`.dose.header`). Dose is **only supported in binary mode**; if `output_format` is `"csv"` and dose is enabled, a one-time message is printed and dose is ignored.
+- **dose_output_path** (optional): Base path for dose files. If empty or missing, uses `output_file_path` (same base as Cherenkov). Output files: `base.dose`, `base.dose.header`.
+- **dose_buffer_size** (optional): Buffer size for dose records; defaults to `buffer_size`.
+
+Use cases: **Cherenkov only** (default); **Dose only** (`enable_cherenkov_output: false`, `enable_dose_output: true`); **Both** (both true).
+
 ## Output Files
 
 ### Binary Mode
-- **Data file**: `output.phsp` (binary, 52 bytes per photon)
-- **Header file**: `output.header` (human-readable field description)
+- **Cherenkov**: `output.phsp` (52 bytes per photon), `output.header`
+- **Dose** (when enabled): `base.dose` (36 bytes per record), `base.dose.header`
+
+### Dose binary format (36 bytes per record)
+- 9 fields: x, y, z [cm], dx, dy, dz [cm] (relative to primary vertex), energy [MeV], event_id (uint32), pdg (int32). When an event has no primary vertex, dx=dy=dz=0; see `run_meta.json` field `dose_deposits_without_primary`.
 
 ### CSV Mode  
 - **Data file**: `output.csv` (text, ~170 bytes per photon)
@@ -134,6 +148,8 @@ expected_size = n_photons * 52 bytes
 ls -l output.phsp
 # File size should equal: (photon_count * 52) bytes
 ```
+
+**run_meta.json** (when dose is enabled) also includes: `total_deposits`, `dose_output_path`, `dose_deposits_without_primary`.
 
 ## Backward Compatibility
 

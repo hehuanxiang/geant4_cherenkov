@@ -19,12 +19,17 @@
 #include <sstream>
 #include <fstream>
 #include <algorithm>
+#include <cstdio>
+#include <cerrno>
+#include <cstring>
 
 // Define static class members
 thread_local std::ofstream RunAction::fThreadOutputStream;
 std::string RunAction::fOutputBasePath = "";
 thread_local PhotonBuffer* RunAction::fThreadBuffer = nullptr;
 PhotonBuffer* RunAction::fMasterBuffer = nullptr;
+thread_local DoseBuffer* RunAction::fThreadDoseBuffer = nullptr;
+DoseBuffer* RunAction::fMasterDoseBuffer = nullptr;
 
 // 定义构造函数和析构函数
 RunAction::RunAction()
@@ -57,6 +62,22 @@ RunAction::~RunAction()
     fMasterBuffer = nullptr;
   }
 #endif
+
+  if (fThreadDoseBuffer != nullptr) {
+    delete fThreadDoseBuffer;
+    fThreadDoseBuffer = nullptr;
+  }
+#ifdef G4MULTITHREADED
+  if (G4Threading::IsMasterThread() && fMasterDoseBuffer != nullptr) {
+    delete fMasterDoseBuffer;
+    fMasterDoseBuffer = nullptr;
+  }
+#else
+  if (fMasterDoseBuffer != nullptr) {
+    delete fMasterDoseBuffer;
+    fMasterDoseBuffer = nullptr;
+  }
+#endif
 }
 
 void RunAction::BeginOfRunAction(const G4Run*)
@@ -71,12 +92,11 @@ void RunAction::BeginOfRunAction(const G4Run*)
 #endif
   {
     EventAction::ResetPhotonCount();
+    EventAction::ResetDoseDepositsWithoutPrimary();
   }
-  
-  // Get output config
+
   Config* config = Config::GetInstance();
   std::string outputFilePath = config->GetOutputFilePath();
-  // fOutputBasePath 为静态变量，仅 master 设置，避免 MT 下数据竞争
 #ifdef G4MULTITHREADED
   if (G4Threading::IsMasterThread())
 #endif
@@ -84,57 +104,138 @@ void RunAction::BeginOfRunAction(const G4Run*)
     fOutputBasePath = outputFilePath;
   }
   fOutputFormat = config->GetOutputFormat();
-  
-  // Convert output format to lowercase for comparison
   std::transform(fOutputFormat.begin(), fOutputFormat.end(), fOutputFormat.begin(), ::tolower);
-  
+
   G4cout << "Output format: " << fOutputFormat << G4endl;
-  
+
   if (fOutputFormat == "binary") {
-    // ===== Binary output mode with buffer =====
     G4int bufferSize = config->GetBufferSize();
-    
+
+    if (config->GetEnableCherenkovOutput()) {
 #ifdef G4MULTITHREADED
-    if (G4Threading::IsWorkerThread()) {
-      // Worker thread: create thread-local buffer
-      fThreadBuffer = new PhotonBuffer(bufferSize);
-      G4cout << "Worker thread " << G4Threading::G4GetThreadId() 
-             << " buffer size: " << fThreadBuffer->GetBufferSize() << G4endl;
-    } else {
-      // Master thread: truncate output file at run start (overwrite previous run)
-      std::ofstream truncateFile(fOutputBasePath + ".phsp", std::ios::out | std::ios::trunc | std::ios::binary);
+      if (G4Threading::IsWorkerThread()) {
+        fThreadBuffer = new PhotonBuffer(bufferSize);
+        G4cout << "Worker thread " << G4Threading::G4GetThreadId()
+               << " buffer size: " << fThreadBuffer->GetBufferSize() << G4endl;
+      } else {
+        // Remove existing file (if any) and create new one
+        std::string phspPath = fOutputBasePath + ".phsp";
+        if (std::remove(phspPath.c_str()) != 0 && errno != ENOENT) {
+          // ENOENT means file doesn't exist, which is fine
+          // Other errors might indicate permission issues or file in use
+          G4cerr << "WARNING: Cannot remove existing file: " << phspPath << G4endl;
+          G4cerr << "         Error: " << std::strerror(errno) << G4endl;
+          G4cerr << "         Will attempt to truncate instead..." << G4endl;
+        }
+        std::ofstream truncateFile(phspPath, std::ios::out | std::ios::trunc | std::ios::binary);
+        if (!truncateFile.good()) {
+          G4cerr << "ERROR: Cannot create output file: " << phspPath << G4endl;
+          G4cerr << "       Error: " << std::strerror(errno) << G4endl;
+          G4cerr << "       Please check file permissions and ensure no other process is using it." << G4endl;
+          return;
+        }
+        truncateFile.close();
+        if (fMasterBuffer == nullptr) {
+          fMasterBuffer = new PhotonBuffer(bufferSize);
+          fMasterBuffer->SetOutputPath(phspPath);
+          G4cout << "Master buffer created with size: " << bufferSize << G4endl;
+        }
+      }
+#else
+      // Remove existing file (if any) and create new one
+      std::string phspPath = fOutputBasePath + ".phsp";
+      if (std::remove(phspPath.c_str()) != 0 && errno != ENOENT) {
+        // ENOENT means file doesn't exist, which is fine
+        // Other errors might indicate permission issues or file in use
+        G4cerr << "WARNING: Cannot remove existing file: " << phspPath << G4endl;
+        G4cerr << "         Error: " << std::strerror(errno) << G4endl;
+        G4cerr << "         Will attempt to truncate instead..." << G4endl;
+      }
+      std::ofstream truncateFile(phspPath, std::ios::out | std::ios::trunc | std::ios::binary);
+      if (!truncateFile.good()) {
+        G4cerr << "ERROR: Cannot create output file: " << phspPath << G4endl;
+        G4cerr << "       Error: " << std::strerror(errno) << G4endl;
+        G4cerr << "       Please check file permissions and ensure no other process is using it." << G4endl;
+        return;
+      }
       truncateFile.close();
-      // Create master buffer
       if (fMasterBuffer == nullptr) {
         fMasterBuffer = new PhotonBuffer(bufferSize);
-        fMasterBuffer->SetOutputPath(fOutputBasePath + ".phsp");  // Set path for auto-flush
-        G4cout << "Master buffer created with size: " << bufferSize << G4endl;
+        fMasterBuffer->SetOutputPath(phspPath);
       }
-    }
-#else
-    // Sequential mode: truncate output file and create single buffer
-    std::ofstream truncateFile(fOutputBasePath + ".phsp", std::ios::out | std::ios::trunc | std::ios::binary);
-    truncateFile.close();
-    if (fMasterBuffer == nullptr) {
-      fMasterBuffer = new PhotonBuffer(bufferSize);
-      fMasterBuffer->SetOutputPath(fOutputBasePath + ".phsp");  // Set path for auto-flush
-    }
 #endif
-    
+    }
+
+    if (config->GetEnableDoseOutput()) {
+      std::string doseBase = config->GetDoseOutputFilePath();
+      G4int doseBufferSize = config->GetDoseBufferSize();
+#ifdef G4MULTITHREADED
+      if (G4Threading::IsWorkerThread()) {
+        fThreadDoseBuffer = new DoseBuffer(doseBufferSize);
+      } else {
+        // Remove existing file (if any) and create new one
+        std::string dosePath = doseBase + ".dose";
+        if (std::remove(dosePath.c_str()) != 0 && errno != ENOENT) {
+          // ENOENT means file doesn't exist, which is fine
+          // Other errors might indicate permission issues or file in use
+          G4cerr << "WARNING: Cannot remove existing dose file: " << dosePath << G4endl;
+          G4cerr << "         Error: " << std::strerror(errno) << G4endl;
+          G4cerr << "         Will attempt to truncate instead..." << G4endl;
+        }
+        std::ofstream truncateDose(dosePath, std::ios::out | std::ios::trunc | std::ios::binary);
+        if (!truncateDose.good()) {
+          G4cerr << "ERROR: Cannot create dose output file: " << dosePath << G4endl;
+          G4cerr << "       Error: " << std::strerror(errno) << G4endl;
+          G4cerr << "       Please check file permissions and ensure no other process is using it." << G4endl;
+          return;
+        }
+        truncateDose.close();
+        if (fMasterDoseBuffer == nullptr) {
+          fMasterDoseBuffer = new DoseBuffer(doseBufferSize);
+          fMasterDoseBuffer->SetOutputPath(dosePath);
+        }
+      }
+#else
+      // Remove existing file (if any) and create new one
+      std::string dosePath = doseBase + ".dose";
+      if (std::remove(dosePath.c_str()) != 0 && errno != ENOENT) {
+        // ENOENT means file doesn't exist, which is fine
+        // Other errors might indicate permission issues or file in use
+        G4cerr << "WARNING: Cannot remove existing dose file: " << dosePath << G4endl;
+        G4cerr << "         Error: " << std::strerror(errno) << G4endl;
+        G4cerr << "         Will attempt to truncate instead..." << G4endl;
+      }
+      std::ofstream truncateDose(dosePath, std::ios::out | std::ios::trunc | std::ios::binary);
+      if (!truncateDose.good()) {
+        G4cerr << "ERROR: Cannot create dose output file: " << dosePath << G4endl;
+        G4cerr << "       Error: " << std::strerror(errno) << G4endl;
+        G4cerr << "       Please check file permissions and ensure no other process is using it." << G4endl;
+        return;
+      }
+      truncateDose.close();
+      if (fMasterDoseBuffer == nullptr) {
+        fMasterDoseBuffer = new DoseBuffer(doseBufferSize);
+        fMasterDoseBuffer->SetOutputPath(dosePath);
+      }
+#endif
+    }
   } else {
-    // ===== CSV output mode with thread-local files =====
+    if (config->GetEnableDoseOutput()) {
+#ifdef G4MULTITHREADED
+      if (G4Threading::IsMasterThread())
+#endif
+      G4cout << "Dose output is enabled but output_format is csv; dose output is only supported in binary mode and will be ignored." << G4endl;
+    }
     G4int threadID = G4Threading::G4GetThreadId();
     std::ostringstream oss;
     oss << outputFilePath << ".thread_" << threadID;
     std::string threadFilePath = oss.str();
-    
+
     fThreadOutputStream.open(threadFilePath, std::ios::out);
     if (!fThreadOutputStream.is_open()) {
       G4cerr << "ERROR: Cannot open thread output file: " << threadFilePath << G4endl;
       return;
     }
-    
-    // Write CSV header
     WriteCSVHeader(fThreadOutputStream);
   }
 }
@@ -142,37 +243,47 @@ void RunAction::BeginOfRunAction(const G4Run*)
 void RunAction::EndOfRunAction(const G4Run* run)
 {
   if (fOutputFormat == "binary") {
-    // ===== Binary output mode =====
 #ifdef G4MULTITHREADED
     if (G4Threading::IsWorkerThread()) {
-      // Worker thread: flush remaining buffer to master
-      if (fThreadBuffer != nullptr && fThreadBuffer->GetBufferEntries() > 0) {
-        if (fMasterBuffer != nullptr) {
-          fMasterBuffer->AbsorbWorkerBuffer(fThreadBuffer);
-        }
+      if (fThreadBuffer != nullptr && fThreadBuffer->GetBufferEntries() > 0 && fMasterBuffer != nullptr) {
+        fMasterBuffer->AbsorbWorkerBuffer(fThreadBuffer);
+      }
+      if (fThreadDoseBuffer != nullptr && fThreadDoseBuffer->GetBufferEntries() > 0 && fMasterDoseBuffer != nullptr) {
+        fMasterDoseBuffer->AbsorbWorkerBuffer(fThreadDoseBuffer);
       }
     } else {
-      // Master thread: write remaining buffer to disk
       if (fMasterBuffer != nullptr && fMasterBuffer->GetBufferEntries() > 0) {
         fMasterBuffer->WriteBuffer(fOutputBasePath + ".phsp");
         fMasterBuffer->ClearBuffer();
       }
-      
-      // Write binary header file
       WriteBinaryHeader(fOutputBasePath + ".header");
-      
       G4cout << "\nBinary output complete: " << fOutputBasePath << ".phsp" << G4endl;
       G4cout << "Header file: " << fOutputBasePath << ".header" << G4endl;
+
+      if (fMasterDoseBuffer != nullptr && fMasterDoseBuffer->GetBufferEntries() > 0) {
+        Config* config = Config::GetInstance();
+        std::string doseBase = config->GetDoseOutputFilePath();
+        fMasterDoseBuffer->WriteBuffer(doseBase + ".dose");
+        fMasterDoseBuffer->ClearBuffer();
+        WriteDoseHeader(doseBase + ".dose.header");
+        G4cout << "Dose output: " << doseBase << ".dose" << G4endl;
+      }
     }
 #else
-    // Sequential mode
     if (fMasterBuffer != nullptr && fMasterBuffer->GetBufferEntries() > 0) {
       fMasterBuffer->WriteBuffer(fOutputBasePath + ".phsp");
       fMasterBuffer->ClearBuffer();
     }
     WriteBinaryHeader(fOutputBasePath + ".header");
+    if (fMasterDoseBuffer != nullptr && fMasterDoseBuffer->GetBufferEntries() > 0) {
+      Config* config = Config::GetInstance();
+      std::string doseBase = config->GetDoseOutputFilePath();
+      fMasterDoseBuffer->WriteBuffer(doseBase + ".dose");
+      fMasterDoseBuffer->ClearBuffer();
+      WriteDoseHeader(doseBase + ".dose.header");
+      G4cout << "Dose output: " << doseBase << ".dose" << G4endl;
+    }
 #endif
-    
   } else {
     // ===== CSV output mode =====
     // Close thread-local output file
@@ -269,6 +380,15 @@ void RunAction::EndOfRunAction(const G4Run* run)
 #else
   int nThreads = 1;
 #endif
+  long totalDeposits = 0;
+  std::string doseOutputBasePath = "";
+  if (fMasterDoseBuffer != nullptr) {
+    totalDeposits = fMasterDoseBuffer->GetTotalEntries();
+    Config* cfg = Config::GetInstance();
+    if (cfg && cfg->GetEnableDoseOutput()) {
+      doseOutputBasePath = cfg->GetDoseOutputFilePath();
+    }
+  }
   RunMetadata::Write(
     fOutputBasePath + ".run_meta.json",
     run,
@@ -277,7 +397,10 @@ void RunAction::EndOfRunAction(const G4Run* run)
     wallSeconds,
     cpuSecondsLong,
     static_cast<long>(EventAction::GetTotalPhotonCount()),
-    nThreads
+    nThreads,
+    totalDeposits,
+    doseOutputBasePath,
+    static_cast<long>(EventAction::GetDoseDepositsWithoutPrimary())
   );
 }
 
@@ -435,6 +558,70 @@ void RunAction::WriteBinaryHeader(const std::string& headerPath)
   headerFile << "  data = np.fromfile('file.phsp', dtype='float32')\n";
   headerFile << "  data = data.reshape(-1, 13)\n";
   headerFile << "  # Access: data[:, 0] = InitialX, data[:, 12] = Energy\n";
-  
+
+  headerFile.close();
+}
+
+void RunAction::RecordDoseData(G4double x, G4double y, G4double z,
+                               G4double dx, G4double dy, G4double dz,
+                               G4double energy, G4int event_id, G4int pdg)
+{
+  Config* config = Config::GetInstance();
+  if (!config->GetEnableDoseOutput() || fOutputFormat != "binary") return;
+#ifdef G4MULTITHREADED
+  DoseBuffer* buffer = G4Threading::IsWorkerThread() ? fThreadDoseBuffer : fMasterDoseBuffer;
+#else
+  DoseBuffer* buffer = fMasterDoseBuffer;
+#endif
+  if (buffer == nullptr) return;
+
+  buffer->Fill(x, y, z, dx, dy, dz, energy, event_id, pdg);
+
+  if (buffer->IsBufferFull()) {
+    std::string doseBase = config->GetDoseOutputFilePath();
+    std::string dosePath = doseBase + ".dose";
+#ifdef G4MULTITHREADED
+    if (G4Threading::IsWorkerThread()) {
+      if (fMasterDoseBuffer != nullptr) {
+        fMasterDoseBuffer->AbsorbWorkerBuffer(buffer);
+      }
+    } else {
+      buffer->WriteBuffer(dosePath);
+      buffer->ClearBuffer();
+    }
+#else
+    buffer->WriteBuffer(dosePath);
+    buffer->ClearBuffer();
+#endif
+  }
+}
+
+void RunAction::WriteDoseHeader(const std::string& headerPath)
+{
+  std::ofstream headerFile(headerPath, std::ios::out);
+  if (!headerFile.is_open()) {
+    G4cerr << "WARNING: Cannot create dose header file: " << headerPath << G4endl;
+    return;
+  }
+  headerFile << "Dose raw energy deposit binary\n";
+  headerFile << "==============================\n\n";
+  headerFile << "Format: Binary (little-endian)\n";
+  headerFile << "Bytes per record: 36\n";
+  headerFile << "Fields per record: 9\n\n";
+  headerFile << "Field order:\n";
+  headerFile << "  1. x [cm] (float32)\n";
+  headerFile << "  2. y [cm] (float32)\n";
+  headerFile << "  3. z [cm] (float32)\n";
+  headerFile << "  4. dx [cm] relative to primary vertex (float32)\n";
+  headerFile << "  5. dy [cm] (float32)\n";
+  headerFile << "  6. dz [cm] (float32)\n";
+  headerFile << "  7. energy [MeV] (float32)\n";
+  headerFile << "  8. event_id (uint32)\n";
+  headerFile << "  9. pdg (int32)\n\n";
+  headerFile << "When event has no primary vertex, dx=dy=dz=0; see run_meta dose_deposits_without_primary.\n\n";
+  headerFile << "Python reading example:\n";
+  headerFile << "  import numpy as np\n";
+  headerFile << "  dt = np.dtype([('x','f4'),('y','f4'),('z','f4'),('dx','f4'),('dy','f4'),('dz','f4'),('energy','f4'),('event_id','u4'),('pdg','i4')])\n";
+  headerFile << "  data = np.fromfile('file.dose', dtype=dt)\n";
   headerFile.close();
 }

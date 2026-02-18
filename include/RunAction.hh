@@ -9,6 +9,7 @@
 #include "globals.hh"
 #include "G4Threading.hh"
 #include "PhotonBuffer.hh"
+#include "DoseBuffer.hh"
 #include <string>
 #include <fstream>
 #include <chrono>
@@ -32,6 +33,10 @@ class RunAction : public G4UserRunAction
                          G4double finalDirX, G4double finalDirY, G4double finalDirZ,
                          G4double finalEnergy);
 
+    void RecordDoseData(G4double x, G4double y, G4double z,
+                        G4double dx, G4double dy, G4double dz,
+                        G4double energy, G4int event_id, G4int pdg);
+
   private:
     // Output format: CSV or Binary
     std::string fOutputFormat;
@@ -43,7 +48,9 @@ class RunAction : public G4UserRunAction
     // For Binary output (buffer-based)
     static thread_local PhotonBuffer* fThreadBuffer;
     static PhotonBuffer* fMasterBuffer;
-    
+    static thread_local DoseBuffer* fThreadDoseBuffer;
+    static DoseBuffer* fMasterDoseBuffer;
+
     // Performance timing
     std::chrono::high_resolution_clock::time_point fStartTime;
     std::chrono::high_resolution_clock::time_point fEndTime;
@@ -54,6 +61,7 @@ class RunAction : public G4UserRunAction
     void WriteCSVHeader(std::ofstream& out);
     void MergeCSVThreadFiles();
     void WriteBinaryHeader(const std::string& headerPath);
+    void WriteDoseHeader(const std::string& headerPath);
 };
 
 #endif

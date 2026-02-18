@@ -64,6 +64,12 @@ public:
   // Output format: "csv" or "binary"
   std::string GetOutputFormat() const;
   int GetBufferSize() const;
+
+  // Cherenkov / Dose output switches (use contains() + defaults)
+  bool GetEnableCherenkovOutput() const;
+  bool GetEnableDoseOutput() const;
+  std::string GetDoseOutputFilePath() const;  // base path for .dose; if empty use output_file_path
+  int GetDoseBufferSize() const;
 };
 
 #endif // CONFIG_HH

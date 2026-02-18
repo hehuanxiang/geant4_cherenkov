@@ -21,7 +21,10 @@ void Write(const std::string& metaPath,
            long wallSeconds,
            long cpuSeconds,
            long totalPhotons,
-           int numThreads);
+           int numThreads,
+           long totalDeposits = 0,
+           const std::string& doseOutputBasePath = "",
+           long doseDepositsWithoutPrimary = 0);
 
 }  // namespace RunMetadata
 

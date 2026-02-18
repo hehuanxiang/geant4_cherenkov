@@ -6,11 +6,12 @@
 #include "RunAction.hh"
 
 #include "G4Event.hh"
+#include "G4PrimaryVertex.hh"
 #include "G4RunManager.hh"
 #include "G4SystemOfUnits.hh"
 
-// 初始化静态成员变量（atomic 用于 MT 模式下的线程安全计数）
 std::atomic<G4int> EventAction::fTotalPhotonCount(0);
+std::atomic<long> EventAction::fDoseDepositsWithoutPrimary(0);
 
 EventAction::EventAction(RunAction* runAction)
 : G4UserEventAction(),
@@ -20,10 +21,22 @@ EventAction::EventAction(RunAction* runAction)
 EventAction::~EventAction()
 {}
 
-void EventAction::BeginOfEventAction(const G4Event*)
-{    
-  // Clear the photon data map at the beginning of each event
+void EventAction::BeginOfEventAction(const G4Event* event)
+{
   fPhotonDataMap.clear();
+
+  G4PrimaryVertex* pv = event->GetPrimaryVertex(0);
+  if (pv) {
+    G4ThreeVector pos = pv->GetPosition();
+    fPrimaryVertexX = pos.x() / cm;
+    fPrimaryVertexY = pos.y() / cm;
+    fPrimaryVertexZ = pos.z() / cm;
+    fHasPrimaryVertex = true;
+  } else {
+    fPrimaryVertexX = fPrimaryVertexY = fPrimaryVertexZ = 0.0;
+    fHasPrimaryVertex = false;
+  }
+  fCurrentEventId = event->GetEventID();
 }
 
 void EventAction::EndOfEventAction(const G4Event*)
@@ -73,4 +86,20 @@ void EventAction::RecordPhotonEnd(G4int trackID, G4double x, G4double y, G4doubl
     data.finalEnergy = energy;
     data.hasData = true;
   }
+}
+
+void EventAction::RecordDoseData(G4double x, G4double y, G4double z, G4double energy, G4int pdg)
+{
+  G4double x_cm = x / cm;
+  G4double y_cm = y / cm;
+  G4double z_cm = z / cm;
+  G4double dx = 0.0, dy = 0.0, dz = 0.0;
+  if (fHasPrimaryVertex) {
+    dx = x_cm - fPrimaryVertexX;
+    dy = y_cm - fPrimaryVertexY;
+    dz = z_cm - fPrimaryVertexZ;
+  } else {
+    fDoseDepositsWithoutPrimary.fetch_add(1);
+  }
+  fRunAction->RecordDoseData(x_cm, y_cm, z_cm, dx, dy, dz, energy, fCurrentEventId, pdg);
 }
