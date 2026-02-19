@@ -1,0 +1,1 @@
+kernel_03_uncertainty.npy was computed with fast (approximate) mode: sigma = sqrt(sum_w2)/N_primaries. It does not account for within-event correlation. Use --uncertainty-mode event for event-level uncertainty.

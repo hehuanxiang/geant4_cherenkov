@@ -1,0 +1,36 @@
+Dose Kernel Statistics
+============================================================
+
+Units: MeV/primary/voxel (not Gy). See voxel_volume_cm3 and density_for_Gy_conversion in JSON.
+
+Energy:
+  total_energy_MeV:           2.1038e+07
+  total_energy_per_primary:   4.022380e-01 MeV
+  energy_in_grid_MeV:         1.8855e+07
+  energy_outside_grid_MeV:    2.1832e+06
+
+Primaries / events:
+  n_primaries:                52,302,569
+  n_events:                  31,903,991
+  WARNING: n_events != n_primaries (see n_events_vs_n_primaries_warning)
+
+Grid:
+  bounds: x=[-10.00,10.00], y=[-10.00,10.00], z=[20.00,40.00] cm
+  grid_shape: 67 x 67 x 67
+  voxel_size_nominal_cm: 0.3000
+  voxel_volume_cm3: 2.700000e-02
+
+Kernel:
+  max:          7.335956e-06
+  mean_nonzero: 1.198604e-06
+  total_sum:    3.604957e-01 MeV/primary
+
+Uncertainty:
+  mode: fast
+  (approximate: sigma from sum_w2, not event-level)
+
+Run info:
+  dose_path:  /home/xhh2c/project/geant4_cherenkov/output/cherenkov_photons_full_with_dose.dose
+  config_path: /home/xhh2c/project/geant4_cherenkov/config.json
+  timestamp:  2026-02-18T14:42:13.788593
+============================================================
