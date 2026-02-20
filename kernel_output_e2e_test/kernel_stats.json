@@ -1,11 +1,11 @@
 {
-  "photons_read": 1398846136,
-  "photons_in_voxel_grid": 1398846136,
+  "photons_read": 2101,
+  "photons_in_voxel_grid": 2101,
   "photons_outside_grid": 0,
   "fraction_outside": 0.0,
-  "n_primaries": 52302569,
-  "mean_photons_per_primary_file": 26.7453,
-  "mean_photons_per_primary_in_grid": 26.7453,
+  "n_primaries": 100,
+  "mean_photons_per_primary_file": 21.01,
+  "mean_photons_per_primary_in_grid": 21.01,
   "water_bounds_cm": {
     "x_min": -30.0,
     "x_max": 30.0,
@@ -38,14 +38,14 @@
   },
   "voxel_size_nominal_cm": 0.6,
   "kernel_stats": {
-    "max": 0.004435805055770779,
-    "mean_nonzero": 0.00010435711001961547,
-    "total_sum": 26.745266298487174
+    "max": 1.29,
+    "mean_nonzero": 0.3890740740740741,
+    "total_sum": 21.009999999999998
   },
   "run_info": {
     "phsp_path": "/home/xhh2c/project/geant4_cherenkov/output/cherenkov_photons_full_with_dose.phsp",
     "config_path": "/home/xhh2c/project/geant4_cherenkov/config.json",
     "xy_range": null,
-    "timestamp": "2026-02-18T20:56:33.622102"
+    "timestamp": "2026-02-18T19:57:00.679410"
   }
 }

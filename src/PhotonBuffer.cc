@@ -39,7 +39,7 @@ void PhotonBuffer::Fill(G4double initX, G4double initY, G4double initZ,
                         G4double initDirX, G4double initDirY, G4double initDirZ,
                         G4double finalX, G4double finalY, G4double finalZ,
                         G4double finalDirX, G4double finalDirY, G4double finalDirZ,
-                        G4double finalEnergy)
+                        G4double finalEnergy, G4int event_id, G4int track_id)
 {
     BinaryPhotonData data;
     
@@ -63,6 +63,9 @@ void PhotonBuffer::Fill(G4double initX, G4double initY, G4double initZ,
     // Convert to microeV
     data.finalEnergy = static_cast<float>((finalEnergy / eV) * 1000000.0);
     
+    data.event_id = static_cast<uint32_t>(event_id >= 0 ? event_id : 0);
+    data.track_id = static_cast<int32_t>(track_id);
+    
     fBuffer.push_back(data);
     fBufferEntries++;
     fTotalEntries++;
@@ -78,8 +81,7 @@ void PhotonBuffer::WriteBuffer(const std::string& filePath)
         return;
     }
     
-    // Write all photon data in buffer
-    // Each photon is 13 floats = 52 bytes
+    // Write all photon data in buffer (60 bytes per photon, v2)
     for (const auto& photon : fBuffer) {
         outFile.write(reinterpret_cast<const char*>(&photon), sizeof(BinaryPhotonData));
     }

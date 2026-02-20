@@ -6,8 +6,9 @@ Units: MeV/primary/voxel (not Gy). See voxel_volume_cm3 and density_for_Gy_conve
 Energy:
   total_energy_MeV:           2.1038e+07
   total_energy_per_primary:   4.022380e-01 MeV
-  energy_in_grid_MeV:         1.8855e+07
-  energy_outside_grid_MeV:    2.1832e+06
+  energy_in_grid_MeV:         2.1038e+07
+  energy_outside_grid_MeV:    0.0000e+00
+  (clamped to 0; was tiny negative from float roundoff)
 
 Primaries / events:
   n_primaries:                52,302,569
@@ -15,22 +16,28 @@ Primaries / events:
   WARNING: n_events != n_primaries (see n_events_vs_n_primaries_warning)
 
 Grid:
-  bounds: x=[-10.00,10.00], y=[-10.00,10.00], z=[20.00,40.00] cm
-  grid_shape: 67 x 67 x 67
-  voxel_size_nominal_cm: 0.3000
-  voxel_volume_cm3: 2.700000e-02
+  bounds: x=[-30.00,30.00], y=[-30.00,30.00], z=[20.00,40.00] cm
+  grid_shape: 100 x 100 x 33
+  voxel_size_nominal_cm: 0.6000
+  voxel_volume_cm3: 2.160000e-01
 
 Kernel:
-  max:          7.335956e-06
-  mean_nonzero: 1.198604e-06
-  total_sum:    3.604957e-01 MeV/primary
+  max:          5.517926e-05
+  mean_nonzero: 1.218903e-06
+  total_sum:    4.022379e-01 MeV/primary
+
+Gy (kernel_05):
+  density_g_cm3:             1.0000
+  dose_units:                Gy/primary/voxel
+  dose_max_Gy_per_primary_voxel: 4.092913e-14
+  dose_sum_Gy_per_primary:   2.983593e-10
 
 Uncertainty:
   mode: fast
-  (approximate: sigma from sum_w2, not event-level)
+  sigma_definition: sigma = sqrt(sum_w2) / N_primaries (approximate, ignores within-event correlation)
 
 Run info:
   dose_path:  /home/xhh2c/project/geant4_cherenkov/output/cherenkov_photons_full_with_dose.dose
   config_path: /home/xhh2c/project/geant4_cherenkov/config.json
-  timestamp:  2026-02-18T14:42:13.788593
+  timestamp:  2026-02-18T20:58:57.016909
 ============================================================

@@ -40,8 +40,14 @@ Use cases: **Cherenkov only** (default); **Dose only** (`enable_cherenkov_output
 ## Output Files
 
 ### Binary Mode
-- **Cherenkov**: `output.phsp` (52 bytes per photon), `output.header`
+- **Cherenkov**: `output.phsp` (60 bytes per photon, format v2), `output.header`
 - **Dose** (when enabled): `base.dose` (36 bytes per record), `base.dose.header`
+
+### Cherenkov PHSP format (v2, 60 bytes per photon)
+- **format_version**: 2
+- **bytes_per_photon**: 60
+- **Byte order**: Little-endian (uint32_t, int32_t, float32)
+- **Fields**: 15 total — initX/Y/Z, initDirX/Y/Z, finalX/Y/Z, finalDirX/Y/Z, finalEnergy (float32), event_id (uint32, G4Event::GetEventID()), track_id (int32, G4Track::GetTrackID(); **-1 = unknown/invalid**)
 
 ### Dose binary format (36 bytes per record)
 - 9 fields: x, y, z [cm], dx, dy, dz [cm] (relative to primary vertex), energy [MeV], event_id (uint32), pdg (int32). When an event has no primary vertex, dx=dy=dz=0; see `run_meta.json` field `dose_deposits_without_primary`.
@@ -51,26 +57,27 @@ Use cases: **Cherenkov only** (default); **Dose only** (`enable_cherenkov_output
 
 ## Reading Binary Data
 
-### Python (NumPy) - Fastest
+### Python (NumPy) - Fastest (v2 format)
 ```python
 import numpy as np
 
-# Read all data
-data = np.fromfile('output.phsp', dtype='float32')
-data = data.reshape(-1, 13)
+# v2 compound dtype, explicit little-endian
+dt = np.dtype([
+    ('initX','<f4'),('initY','<f4'),('initZ','<f4'),
+    ('initDirX','<f4'),('initDirY','<f4'),('initDirZ','<f4'),
+    ('finalX','<f4'),('finalY','<f4'),('finalZ','<f4'),
+    ('finalDirX','<f4'),('finalDirY','<f4'),('finalDirZ','<f4'),
+    ('finalEnergy','<f4'),('event_id','<u4'),('track_id','<i4')
+])
+data = np.fromfile('output.phsp', dtype=dt)
 
-# Extract fields (indices 0-12)
-initial_x = data[:, 0]   # cm
-initial_y = data[:, 1]   # cm
-initial_z = data[:, 2]   # cm
-final_x = data[:, 6]     # cm
-final_y = data[:, 7]     # cm
-final_z = data[:, 8]     # cm
-energy = data[:, 12]     # microeV
+# Extract fields
+initial_x = data['initX']
+event_ids = data['event_id']
 
 # Quick plot
 import matplotlib.pyplot as plt
-plt.hist2d(initial_x, initial_y, bins=100, cmap='hot')
+plt.hist2d(initial_x, data['initY'], bins=100, cmap='hot')
 plt.xlabel('X (cm)')
 plt.ylabel('Y (cm)')
 plt.colorbar()
@@ -104,15 +111,17 @@ This shows:
 - Binary write operations
 - Thread-safe absorb mechanism
 
-**BinaryPhotonData Structure**
+**BinaryPhotonData Structure (v2, 60 bytes)**
 ```cpp
 struct BinaryPhotonData {
-    float initX, initY, initZ;          // 12 bytes
-    float initDirX, initDirY, initDirZ; // 12 bytes
-    float finalX, finalY, finalZ;       // 12 bytes
-    float finalDirX, finalDirY, finalDirZ; // 12 bytes
-    float finalEnergy;                  // 4 bytes
-};  // Total: 52 bytes per photon
+    float initX, initY, initZ;
+    float initDirX, initDirY, initDirZ;
+    float finalX, finalY, finalZ;
+    float finalDirX, finalDirY, finalDirZ;
+    float finalEnergy;
+    uint32_t event_id;   // G4Event::GetEventID()
+    int32_t track_id;    // G4Track::GetTrackID(); -1 = unknown
+};  // Total: 60 bytes per photon
 ```
 
 **RunAction Modifications**
@@ -129,24 +138,23 @@ struct BinaryPhotonData {
 ✅ **Precision**: float32 provides sufficient accuracy  
 ✅ **Standard format**: Easy to read with NumPy, MATLAB, etc.
 
-## File Format Details
+## File Format Details (v2)
 
-- **Byte Order**: Little-endian (standard on x86-64)
-- **Data Type**: IEEE 754 single precision (float32)
-- **Record Size**: 52 bytes per photon
-- **No Header**: Pure binary data stream
-- **Metadata**: Separate .header file for documentation
+- **Byte Order**: Little-endian (uint32_t, int32_t, float32)
+- **Data Types**: IEEE 754 float32, uint32_t, int32_t
+- **Record Size**: 60 bytes per photon
+- **Metadata**: Separate .header file (format_version: 2, bytes_per_photon: 60)
 
 ## Verification
 
 Check binary file integrity:
 ```bash
-# Expected file size
-expected_size = n_photons * 52 bytes
+# Expected file size (v2)
+expected_size = n_photons * 60 bytes
 
 # Verify
 ls -l output.phsp
-# File size should equal: (photon_count * 52) bytes
+# File size should equal: (photon_count * 60) bytes
 ```
 
 **run_meta.json** (when dose is enabled) also includes: `total_deposits`, `dose_output_path`, `dose_deposits_without_primary`.

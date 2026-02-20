@@ -1,0 +1,41 @@
+Cherenkov–Dose 相关性分析结果
+================================
+
+输入文件
+--------
+  phsp: /home/xhh2c/project/geant4_cherenkov/output/cherenkov_photons_full_with_dose.phsp
+  dose: /home/xhh2c/project/geant4_cherenkov/output/cherenkov_photons_full_with_dose.dose
+
+Per-event 统计
+----------------
+  n_events                = 52302569
+  nonzero_photon_events   = 14689049
+  nonzero_dose_events     = 31903991
+  mean photons per event  = 26.745266
+  std photons per event   = 82.479678
+  mean dose per event (MeV) = 0.402238
+  std dose per event (MeV)  = 0.673750
+
+Global yield
+-------------
+  global_yield (ΣN/ΣE) = 66.491164 photons/MeV
+
+线性拟合 (dose >= threshold)
+-----------------------------
+  slope a (photons/MeV) = 128.831690
+  intercept b = -44.262420
+  R² = 0.876724
+
+相关性（total dose vs photons）
+--------------------------------
+  Pearson  = 0.914301  (p = 0.0000e+00)
+  Spearman = 0.799655  (p = 0.0000e+00)
+
+电子剂量 (pdg==11) vs photons
+-----------------------------
+  corr_electron_dose (Pearson) = 0.909853
+
+对比
+----
+  corr_total_dose    = 0.9143011012342331
+  corr_electron_dose = 0.9098527217247174

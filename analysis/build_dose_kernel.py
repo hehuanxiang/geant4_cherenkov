@@ -5,13 +5,15 @@ to match Cherenkov kernel (same grid and center for direct comparison). Use --us
 K_dose(dx,dy,dz) relative to primary vertex.
 
 Outputs: kernel_01_energy_sum.npy, kernel_02_normalized.npy, kernel_03_uncertainty.npy,
-kernel_04_voxel_edges.npz, kernel_stats.json/txt, and PNG plots in dose_kernel_output/.
+kernel_04_voxel_edges.npz, kernel_05_dose_Gy_per_primary.npy, kernel_stats.json/txt, and PNG
+plots in dose_kernel_output/ (plot_01..04 MeV, plot_05..08 Gy).
 
 Usage:
   python build_dose_kernel.py                    # (x,y,z) + config, same as Cherenkov
   python build_dose_kernel.py --use-dxdydz       # (dx,dy,dz) relative to primary
   python build_dose_kernel.py --n-primaries N
   python build_dose_kernel.py --uncertainty-mode event
+  python build_dose_kernel.py --density-g-cm3 1.0  # density for Gy conversion (default 1.0)
 """
 
 import argparse
@@ -39,6 +41,8 @@ TARGET_BINS_LARGEST_DIM = 100
 DEFAULT_CHUNK_RECORDS = 1_000_000
 # std_e for event-level uncertainty: ddof=1 (sample std), fixed in plan
 EVENT_LEVEL_STD_DDOF = 1
+# Gy conversion: dose_Gy = energy_MeV * J_PER_MEV / (density_g_cm3 * voxel_volume_cm3); mass_kg = mass_g/1000
+J_PER_MEV = 1.602176634e-10
 
 
 def _script_dir():
@@ -71,6 +75,8 @@ def parse_args():
                    help="Override x,y bounds (same as Cherenkov, e.g. -10 10)")
     p.add_argument("--uncertainty-mode", choices=("fast", "event"), default="fast",
                    help="fast: approximate sigma from sum_w2; event: event-level std (ddof=1)")
+    p.add_argument("--density-g-cm3", type=float, default=1.0,
+                   help="Density in g/cm³ for Gy conversion (default: 1.0, water)")
     return p.parse_args()
 
 
@@ -451,6 +457,70 @@ def plot_slices_and_profiles(out_dir, K, edges, grid_center, coord_labels, dv):
     plt.close()
 
 
+def plot_slices_and_profiles_Gy(out_dir, dose_Gy, edges, grid_center, coord_labels, dv):
+    """Four Gy plots: XY slice, XZ slice, depth profile (sum over x,y), radial profile; units Gy/primary/voxel or Gy/primary."""
+    x_edges, y_edges, z_edges = edges
+    cx, cy, cz = grid_center
+    x_c, y_c, z_c = voxel_centers(edges)
+    nx, ny, nz = dose_Gy.shape
+    k_center_z = np.clip(np.searchsorted(z_edges, cz, side="right") - 1, 0, nz - 1)
+    j_center_y = np.clip(np.searchsorted(y_edges, cy, side="right") - 1, 0, ny - 1)
+    xl, yl, zl = coord_labels
+    center_note = " (primary vertex)" if (cx == 0 and cy == 0 and cz == 0) else ""
+
+    fig, ax = plt.subplots(figsize=(8, 6))
+    im = ax.pcolormesh(x_edges, y_edges, dose_Gy[:, :, k_center_z].T, shading="auto", cmap="viridis")
+    ax.set_xlabel(f"{xl} (cm)")
+    ax.set_ylabel(f"{yl} (cm)")
+    ax.set_title(f"Dose (Gy) at {zl} = {cz:.1f} cm{center_note}")
+    ax.set_aspect("equal")
+    plt.colorbar(im, ax=ax, label="Gy/primary/voxel")
+    plt.tight_layout()
+    plt.savefig(os.path.join(out_dir, "plot_05_xy_slice_center_z_Gy.png"), dpi=150, bbox_inches="tight")
+    plt.close()
+
+    fig, ax = plt.subplots(figsize=(8, 6))
+    im = ax.pcolormesh(x_edges, z_edges, dose_Gy[:, j_center_y, :].T, shading="auto", cmap="viridis")
+    ax.set_xlabel(f"{xl} (cm)")
+    ax.set_ylabel(f"{zl} (cm)")
+    ax.set_title(f"Dose (Gy) at {yl} = {cy:.1f} cm{center_note}")
+    plt.colorbar(im, ax=ax, label="Gy/primary/voxel")
+    plt.tight_layout()
+    plt.savefig(os.path.join(out_dir, "plot_06_xz_slice_center_y_Gy.png"), dpi=150, bbox_inches="tight")
+    plt.close()
+
+    # sum_{x,y} dose -> Gy/primary (depth profile)
+    dose_z = np.sum(dose_Gy, axis=(0, 1))
+    fig, ax = plt.subplots(figsize=(8, 5))
+    ax.plot(z_c, dose_z, "b-", label="Dose(z)")
+    ax.set_xlabel(f"{zl} (cm)")
+    ax.set_ylabel(r"$\sum_{x,y}$ dose (Gy/primary)")
+    ax.set_title("Depth profile: dose integrated over x,y (Gy/primary)")
+    ax.grid(True, alpha=0.3)
+    plt.tight_layout()
+    plt.savefig(os.path.join(out_dir, "plot_07_depth_profile_Kz_Gy.png"), dpi=150, bbox_inches="tight")
+    plt.close()
+
+    # radial bin aggregate -> Gy/primary per radial bin
+    xx, yy, zz = np.meshgrid(x_c, y_c, z_c, indexing="ij")
+    r = np.sqrt((xx - cx) ** 2 + (yy - cy) ** 2)
+    r_flat = r.ravel()
+    dose_flat = dose_Gy.ravel()
+    r_max = np.max(r)
+    r_edges = np.linspace(0, r_max + 1e-9, 51)
+    dose_r, _ = np.histogram(r_flat, bins=r_edges, weights=dose_flat)
+    r_centers = (r_edges[:-1] + r_edges[1:]) / 2
+    fig, ax = plt.subplots(figsize=(8, 5))
+    ax.plot(r_centers, dose_r, "b-", label="Dose(r)")
+    ax.set_xlabel("r (cm)")
+    ax.set_ylabel("Dose(r) (Gy/primary per radial bin)")
+    ax.set_title(f"Radial profile (Gy), r = sqrt(({xl}-cx)^2+({yl}-cy)^2), center=({cx:.0f},{cy:.0f})")
+    ax.grid(True, alpha=0.3)
+    plt.tight_layout()
+    plt.savefig(os.path.join(out_dir, "plot_08_radial_profile_Kr_Gy.png"), dpi=150, bbox_inches="tight")
+    plt.close()
+
+
 def save_kernel_stats(
     out_dir,
     sum_w,
@@ -473,8 +543,10 @@ def save_kernel_stats(
     config_path,
     use_xyz,
     xy_range,
+    density_g_cm3,
+    dose_Gy,
 ):
-    """kernel_stats.json and kernel_stats.txt; units MeV, MeV/primary/voxel; voxel volume for Gy conversion."""
+    """kernel_stats.json and kernel_stats.txt; units MeV, MeV/primary/voxel; Gy stats from kernel_05 (dose_Gy.sum() = dose_sum_Gy_per_primary)."""
     x_edges, y_edges, z_edges = edges
     nx, ny, nz = len(x_edges) - 1, len(y_edges) - 1, len(z_edges) - 1
     voxel_volume_cm3 = dv * dv * dv
@@ -504,6 +576,10 @@ def save_kernel_stats(
         "voxel_size_nominal_cm": dv,
         "voxel_volume_cm3": voxel_volume_cm3,
         "density_for_Gy_conversion": "user: mass_g = density_g_cm3 * voxel_volume_cm3; dose_Gy = energy_MeV * 1.602e-10 / mass_kg",
+        "density_g_cm3": float(density_g_cm3),
+        "dose_units": "Gy/primary/voxel",
+        "dose_max_Gy_per_primary_voxel": float(np.nanmax(dose_Gy)),
+        "dose_sum_Gy_per_primary": float(dose_Gy.sum()),
         "kernel_stats": {
             "max": float(np.nanmax(K)),
             "mean_nonzero": float(np.nanmean(K[K > 0])) if np.any(K > 0) else 0.0,
@@ -552,6 +628,11 @@ def save_kernel_stats(
         f.write(f"  max:          {stats['kernel_stats']['max']:.6e}\n")
         f.write(f"  mean_nonzero: {stats['kernel_stats']['mean_nonzero']:.6e}\n")
         f.write(f"  total_sum:    {stats['kernel_stats']['total_sum_MeV_per_primary']:.6e} MeV/primary\n\n")
+        f.write("Gy (kernel_05):\n")
+        f.write(f"  density_g_cm3:             {stats['density_g_cm3']:.4f}\n")
+        f.write(f"  dose_units:                {stats['dose_units']}\n")
+        f.write(f"  dose_max_Gy_per_primary_voxel: {stats['dose_max_Gy_per_primary_voxel']:.6e}\n")
+        f.write(f"  dose_sum_Gy_per_primary:   {stats['dose_sum_Gy_per_primary']:.6e}\n\n")
         f.write("Uncertainty:\n")
         f.write(f"  mode: {uncertainty_mode}\n")
         f.write(f"  sigma_definition: {sigma_definition}\n")
@@ -627,6 +708,12 @@ def main():
 
     edges, dv = get_voxel_edges(bounds)
     x_edges, y_edges, z_edges = edges
+    density_g_cm3 = args.density_g_cm3
+    if density_g_cm3 <= 0:
+        raise ValueError(f"density_g_cm3 must be positive, got {density_g_cm3}")
+    voxel_volume_cm3 = dv * dv * dv
+    if voxel_volume_cm3 <= 0:
+        raise ValueError(f"voxel_volume_cm3 must be positive, got {voxel_volume_cm3}")
     print(f"Voxel size (dv): {dv:.4f} cm")
     print(f"Grid shape: {len(x_edges)-1} x {len(y_edges)-1} x {len(z_edges)-1}")
 
@@ -660,6 +747,12 @@ def main():
     print("Saving arrays...")
     save_arrays(out_dir, sum_w, K, sigma, edges, uncertainty_approximate=uncertainty_approximate)
 
+    dose_Gy = np.asarray(
+        K * J_PER_MEV / (density_g_cm3 * voxel_volume_cm3),
+        dtype=np.float64,
+    )
+    np.save(os.path.join(out_dir, "kernel_05_dose_Gy_per_primary.npy"), dose_Gy)
+
     save_kernel_stats(
         out_dir,
         sum_w=sum_w,
@@ -682,10 +775,13 @@ def main():
         config_path=config_path,
         use_xyz=use_xyz,
         xy_range=xy_range,
+        density_g_cm3=density_g_cm3,
+        dose_Gy=dose_Gy,
     )
 
     print("Generating plots...")
     plot_slices_and_profiles(out_dir, K, edges, grid_center, coord_labels, dv)
+    plot_slices_and_profiles_Gy(out_dir, dose_Gy, edges, grid_center, coord_labels, dv)
 
     print_summary(n_primaries, n_events, total_energy_MeV, K, dv, warning=n_events_vs_n_primaries_warning)
     print(f"Done. Outputs in: {out_dir}")

@@ -24,10 +24,19 @@ matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 
 # -----------------------------------------------------------------------------
-# Constants (plan: 52 bytes per photon, 13 float32)
+# Constants (v2: 60 bytes per photon, compound dtype)
 # -----------------------------------------------------------------------------
-BYTES_PER_PHOTON = 52
-FIELDS_PER_PHOTON = 13
+BYTES_PER_PHOTON = 60
+
+PHSP_DTYPE = np.dtype([
+    ("initX", "<f4"), ("initY", "<f4"), ("initZ", "<f4"),
+    ("initDirX", "<f4"), ("initDirY", "<f4"), ("initDirZ", "<f4"),
+    ("finalX", "<f4"), ("finalY", "<f4"), ("finalZ", "<f4"),
+    ("finalDirX", "<f4"), ("finalDirY", "<f4"), ("finalDirZ", "<f4"),
+    ("finalEnergy", "<f4"),
+    ("event_id", "<u4"),
+    ("track_id", "<i4"),
+])
 VOXEL_SIZE_MIN_CM = 0.3
 VOXEL_SIZE_MAX_CM = 0.8
 TARGET_BINS_LARGEST_DIM = 100
@@ -137,19 +146,58 @@ def get_voxel_edges(bounds):
     return (x_edges, y_edges, z_edges), float(dv)
 
 
+def _validate_header_if_present(phsp_path):
+    """If .header exists, validate format_version 2 and bytes_per_photon 60."""
+    hp = path_header(phsp_path)
+    if not os.path.isfile(hp):
+        return
+    format_version = None
+    bytes_per_photon = None
+    with open(hp, "r", encoding="utf-8") as f:
+        for line in f:
+            line = line.strip()
+            for sep in (":", "="):
+                if sep in line:
+                    k, v = line.split(sep, 1)
+                    k, v = k.strip().lower(), v.strip()
+                    if "format_version" in k or k == "format_version":
+                        try:
+                            format_version = int(float(v))
+                        except ValueError:
+                            pass
+                    elif "bytes_per_photon" in k or k == "bytes_per_photon":
+                        try:
+                            bytes_per_photon = int(float(v))
+                        except ValueError:
+                            pass
+                    break
+    if format_version is not None and format_version != 2:
+        raise ValueError(
+            f"Header format_version={format_version} is not v2; only v2 (60 bytes per photon) supported"
+        )
+    if bytes_per_photon is not None and bytes_per_photon != 60:
+        raise ValueError(
+            f"Header bytes_per_photon={bytes_per_photon} is not 60; only v2 supported"
+        )
+
+
 def get_n_photons(phsp_path, run_meta):
     """
-    Plan: if run_meta exists use run_meta["total_photons"]; else n_photons = file_size // 52.
-    Validate file_size % 52 == 0; if using run_meta, validate total_photons == file_size // 52.
+    Validate file_size % 60 == 0; return n_photons = file_size // 60.
+    If run_meta exists with total_photons, validate match.
     """
     file_size = os.path.getsize(phsp_path)
     if file_size % BYTES_PER_PHOTON != 0:
-        raise ValueError(f"PHSP file size {file_size} is not divisible by {BYTES_PER_PHOTON}")
+        raise ValueError(
+            f"PHSP file size {file_size} is not divisible by {BYTES_PER_PHOTON}; "
+            f"expected v2 format (60 bytes per photon)"
+        )
+    _validate_header_if_present(phsp_path)
     from_file = file_size // BYTES_PER_PHOTON
     if run_meta is not None and "total_photons" in run_meta:
         n_meta = int(run_meta["total_photons"])
         if n_meta != from_file:
-            raise ValueError(f"run_meta total_photons={n_meta} != file_size//52={from_file}")
+            raise ValueError(f"run_meta total_photons={n_meta} != file_size//60={from_file}")
         return n_meta
     return from_file
 
@@ -198,10 +246,8 @@ def get_n_primaries(run_meta, config_path, header_path, argparse_n_primaries):
 
 def build_histogram_chunked(phsp_path, edges, chunk_size):
     """
-    Plan: read in chunks of chunk_size photons; take columns 0,1,2 (InitialX,Y,Z);
-    np.histogramdd(chunk_xyz, bins=edges); accumulate into single 3D array.
+    Read v2 phsp in chunks; extract initX, initY, initZ; np.histogramdd.
     Returns counts (3D), and total photons read from file.
-    Note: counts.sum() = photons actually in voxel grid (some may fall outside edges).
     """
     x_edges, y_edges, z_edges = edges
     bins = (x_edges, y_edges, z_edges)
@@ -220,9 +266,8 @@ def build_histogram_chunked(phsp_path, edges, chunk_size):
             n_read = len(raw) // BYTES_PER_PHOTON
             if n_read == 0:
                 break
-            data = np.frombuffer(raw, dtype=np.float32)
-            data = data[: n_read * FIELDS_PER_PHOTON].reshape(n_read, FIELDS_PER_PHOTON)
-            xyz = data[:, :3]
+            data = np.frombuffer(raw, dtype=PHSP_DTYPE)
+            xyz = np.column_stack([data["initX"], data["initY"], data["initZ"]])
             H, _ = np.histogramdd(xyz, bins=bins)
             counts += H
             total_read += n_read

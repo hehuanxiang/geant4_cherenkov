@@ -20,9 +20,16 @@ import sys
 import warnings
 warnings.filterwarnings('ignore')
 
+# Add project root for read_binary_phsp import
+_script_dir = os.path.dirname(os.path.abspath(__file__))
+_project_root = os.path.dirname(_script_dir)
+if _project_root not in sys.path:
+    sys.path.insert(0, _project_root)
+from read_binary_phsp import read_binary_phsp
+
 # ============= Configuration =============
-BINARY_FILE = '/home/xhh2c/project/geant4_cherenkov/output/cherenkov_photons_full.phsp'
-OUTPUT_DIR = '/home/xhh2c/project/geant4_cherenkov/plot'
+BINARY_FILE = os.path.join(_project_root, 'output', 'cherenkov_photons_full.phsp')
+OUTPUT_DIR = os.path.join(_project_root, 'plot')
 
 os.makedirs(OUTPUT_DIR, exist_ok=True)
 plt.style.use('seaborn-v0_8-whitegrid')
@@ -30,29 +37,26 @@ sns.set_palette("husl")
 
 # ============= Data Loading =============
 def load_and_process_data():
-    """Load binary PHSP and compute all derived quantities. Returns a dict with all arrays."""
-    print("Loading complete dataset from binary phase space file...\n")
+    """Load binary PHSP (v2, 60B) and compute all derived quantities. Returns a dict with all arrays."""
+    print("Loading complete dataset from binary phase space file (v2)...\n")
     
-    # Load binary data
-    print(f"Reading: {BINARY_FILE}")
-    raw_data = np.fromfile(BINARY_FILE, dtype='float32')
-    raw_data = raw_data.reshape(-1, 13)
-    print(f"Loaded {len(raw_data):,} photon records (complete dataset)\n")
+    data = read_binary_phsp(BINARY_FILE)
+    print(f"Loaded {len(data):,} photon records (complete dataset)\n")
     
-    # Extract raw arrays (13 fields)
-    init_x = raw_data[:, 0]
-    init_y = raw_data[:, 1]
-    init_z = raw_data[:, 2]
-    init_dir_x = raw_data[:, 3]
-    init_dir_y = raw_data[:, 4]
-    init_dir_z = raw_data[:, 5]
-    final_x = raw_data[:, 6]
-    final_y = raw_data[:, 7]
-    final_z = raw_data[:, 8]
-    final_dir_x = raw_data[:, 9]
-    final_dir_y = raw_data[:, 10]
-    final_dir_z = raw_data[:, 11]
-    energy_array = raw_data[:, 12] / 1e12  # Convert microeV to MeV
+    # Extract from structured array
+    init_x = data["initX"]
+    init_y = data["initY"]
+    init_z = data["initZ"]
+    init_dir_x = data["initDirX"]
+    init_dir_y = data["initDirY"]
+    init_dir_z = data["initDirZ"]
+    final_x = data["finalX"]
+    final_y = data["finalY"]
+    final_z = data["finalZ"]
+    final_dir_x = data["finalDirX"]
+    final_dir_y = data["finalDirY"]
+    final_dir_z = data["finalDirZ"]
+    energy_array = data["finalEnergy"] / 1e12  # Convert microeV to MeV
     
     # Compute derived quantities
     print("Computing metrics...")
@@ -91,6 +95,8 @@ def load_and_process_data():
         'angle_change': angle_change,
         'theta_init': theta_init,
         'phi_init': phi_init,
+        'event_id': data["event_id"],
+        'track_id': data["track_id"],
     }
 
 # ============= Utility Functions =============

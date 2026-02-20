@@ -50,7 +50,7 @@ void EventAction::EndOfEventAction(const G4Event*)
         data.initialDirX, data.initialDirY, data.initialDirZ,
         data.finalX, data.finalY, data.finalZ,
         data.finalDirX, data.finalDirY, data.finalDirZ,
-        data.finalEnergy
+        data.finalEnergy, fCurrentEventId, pair.first
       );
     }
   }

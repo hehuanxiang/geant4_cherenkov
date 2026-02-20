@@ -408,7 +408,7 @@ void RunAction::RecordPhotonData(G4double initX, G4double initY, G4double initZ,
                                  G4double initDirX, G4double initDirY, G4double initDirZ,
                                  G4double finalX, G4double finalY, G4double finalZ,
                                  G4double finalDirX, G4double finalDirY, G4double finalDirZ,
-                                 G4double finalEnergy)
+                                 G4double finalEnergy, G4int event_id, G4int track_id)
 {
   if (fOutputFormat == "binary") {
     // ===== Binary output mode with buffer =====
@@ -423,7 +423,7 @@ void RunAction::RecordPhotonData(G4double initX, G4double initY, G4double initZ,
     // Fill buffer
     buffer->Fill(initX, initY, initZ, initDirX, initDirY, initDirZ,
                  finalX, finalY, finalZ, finalDirX, finalDirY, finalDirZ,
-                 finalEnergy);
+                 finalEnergy, event_id, track_id);
     
     // Check if buffer is full
     if (buffer->IsBufferFull()) {
@@ -531,33 +531,39 @@ void RunAction::WriteBinaryHeader(const std::string& headerPath)
     return;
   }
   
-  headerFile << "Binary Phase Space File\n";
-  headerFile << "========================\n\n";
+  headerFile << "Binary Phase Space File (format version 2)\n";
+  headerFile << "========================================\n\n";
+  headerFile << "format_version: 2\n";
+  headerFile << "bytes_per_photon: 60\n\n";
   headerFile << "Format: Binary (little-endian)\n";
-  headerFile << "Data type: float32 (4 bytes per value)\n";
-  headerFile << "Total fields per photon: 13\n";
-  headerFile << "Bytes per photon: 52\n\n";
+  headerFile << "uint32_t, int32_t, float32 all little-endian\n";
+  headerFile << "Total fields per photon: 15\n\n";
   
   headerFile << "Field order:\n";
-  headerFile << "  1. InitialX [cm] (f4)\n";
-  headerFile << "  2. InitialY [cm] (f4)\n";
-  headerFile << "  3. InitialZ [cm] (f4)\n";
-  headerFile << "  4. InitialDirX (f4)\n";
-  headerFile << "  5. InitialDirY (f4)\n";
-  headerFile << "  6. InitialDirZ (f4)\n";
-  headerFile << "  7. FinalX [cm] (f4)\n";
-  headerFile << "  8. FinalY [cm] (f4)\n";
-  headerFile << "  9. FinalZ [cm] (f4)\n";
-  headerFile << " 10. FinalDirX (f4)\n";
-  headerFile << " 11. FinalDirY (f4)\n";
-  headerFile << " 12. FinalDirZ (f4)\n";
-  headerFile << " 13. FinalEnergy [microeV] (f4)\n\n";
+  headerFile << "  1. InitialX [cm] (float32)\n";
+  headerFile << "  2. InitialY [cm] (float32)\n";
+  headerFile << "  3. InitialZ [cm] (float32)\n";
+  headerFile << "  4. InitialDirX (float32)\n";
+  headerFile << "  5. InitialDirY (float32)\n";
+  headerFile << "  6. InitialDirZ (float32)\n";
+  headerFile << "  7. FinalX [cm] (float32)\n";
+  headerFile << "  8. FinalY [cm] (float32)\n";
+  headerFile << "  9. FinalZ [cm] (float32)\n";
+  headerFile << " 10. FinalDirX (float32)\n";
+  headerFile << " 11. FinalDirY (float32)\n";
+  headerFile << " 12. FinalDirZ (float32)\n";
+  headerFile << " 13. FinalEnergy [microeV] (float32)\n";
+  headerFile << " 14. event_id (uint32, G4Event::GetEventID())\n";
+  headerFile << " 15. track_id (int32, G4Track::GetTrackID(); -1 = unknown)\n\n";
   
   headerFile << "Python reading example:\n";
   headerFile << "  import numpy as np\n";
-  headerFile << "  data = np.fromfile('file.phsp', dtype='float32')\n";
-  headerFile << "  data = data.reshape(-1, 13)\n";
-  headerFile << "  # Access: data[:, 0] = InitialX, data[:, 12] = Energy\n";
+  headerFile << "  dt = np.dtype([('initX','<f4'),('initY','<f4'),('initZ','<f4'),\n";
+  headerFile << "    ('initDirX','<f4'),('initDirY','<f4'),('initDirZ','<f4'),\n";
+  headerFile << "    ('finalX','<f4'),('finalY','<f4'),('finalZ','<f4'),\n";
+  headerFile << "    ('finalDirX','<f4'),('finalDirY','<f4'),('finalDirZ','<f4'),\n";
+  headerFile << "    ('finalEnergy','<f4'),('event_id','<u4'),('track_id','<i4')])\n";
+  headerFile << "  data = np.fromfile('file.phsp', dtype=dt)\n";
 
   headerFile.close();
 }

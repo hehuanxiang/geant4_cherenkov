@@ -2,15 +2,15 @@ Kernel Statistics
 ============================================================
 
 Photon counts:
-  photons_read:              1,398,846,136
-  photons_in_voxel_grid:     1,398,846,136
+  photons_read:              2,101
+  photons_in_voxel_grid:     2,101
   photons_outside_grid:      0
   fraction_outside:          0.000000
 
 Primaries and means:
-  n_primaries:               52,302,569
-  mean_photons_per_primary (file):   26.7453
-  mean_photons_per_primary (in grid): 26.7453
+  n_primaries:               100
+  mean_photons_per_primary (file):   21.0100
+  mean_photons_per_primary (in grid): 21.0100
 
 Voxel grid:
   water_bounds: x=[-30.0,30.0], y=[-30.0,30.0], z=[20.0,40.0] cm
@@ -18,12 +18,12 @@ Voxel grid:
   voxel_size:   0.6000 cm (nominal)
 
 Kernel:
-  max:          4.435805e-03
-  mean_nonzero: 1.043571e-04
+  max:          1.290000e+00
+  mean_nonzero: 3.890741e-01
 
 Run info:
   phsp_path:    /home/xhh2c/project/geant4_cherenkov/output/cherenkov_photons_full_with_dose.phsp
   config_path:  /home/xhh2c/project/geant4_cherenkov/config.json
   xy_range:     None
-  timestamp:    2026-02-18T20:56:33.622102
+  timestamp:    2026-02-18T19:57:00.679410
 ============================================================

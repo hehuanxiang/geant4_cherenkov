@@ -31,7 +31,7 @@ class RunAction : public G4UserRunAction
                          G4double initDirX, G4double initDirY, G4double initDirZ,
                          G4double finalX, G4double finalY, G4double finalZ,
                          G4double finalDirX, G4double finalDirY, G4double finalDirZ,
-                         G4double finalEnergy);
+                         G4double finalEnergy, G4int event_id, G4int track_id);
 
     void RecordDoseData(G4double x, G4double y, G4double z,
                         G4double dx, G4double dy, G4double dz,

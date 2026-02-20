@@ -7,6 +7,7 @@
 #define PhotonBuffer_h 1
 
 #include "globals.hh"
+#include <cstdint>
 #include <vector>
 #include <string>
 #include <fstream>
@@ -15,14 +16,17 @@
 #include "G4AutoLock.hh"
 #endif
 
-// Structure to hold single photon data for binary output
+// Structure to hold single photon data for binary output (v2, 60 bytes)
 struct BinaryPhotonData {
     float initX, initY, initZ;          // Initial position (cm)
     float initDirX, initDirY, initDirZ; // Initial direction (unit vector)
     float finalX, finalY, finalZ;       // Final position (cm)
     float finalDirX, finalDirY, finalDirZ; // Final direction (unit vector)
     float finalEnergy;                  // Final energy (microeV)
+    uint32_t event_id;                  // G4Event::GetEventID()
+    int32_t track_id;                   // G4Track::GetTrackID(); -1 = unknown/invalid
 };
+static_assert(sizeof(BinaryPhotonData) == 60, "BinaryPhotonData must be 60 bytes for format v2");
 
 class PhotonBuffer
 {
@@ -35,7 +39,7 @@ public:
               G4double initDirX, G4double initDirY, G4double initDirZ,
               G4double finalX, G4double finalY, G4double finalZ,
               G4double finalDirX, G4double finalDirY, G4double finalDirZ,
-              G4double finalEnergy);
+              G4double finalEnergy, G4int event_id, G4int track_id);
     
     // Write buffer to binary file
     void WriteBuffer(const std::string& filePath);

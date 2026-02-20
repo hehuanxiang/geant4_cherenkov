@@ -1,60 +1,63 @@
 {
   "units": "MeV/primary/voxel (not Gy; convert using voxel mass = density_g_cm3 * voxel_volume_cm3)",
-  "total_energy_MeV": 21038075.56116824,
+  "total_energy_MeV": 21038075.561168253,
   "total_energy_per_primary_MeV": 0.402238,
-  "energy_in_voxel_grid_MeV": 18854851.35869823,
-  "energy_outside_grid_MeV": 2183224.2024700083,
+  "energy_in_voxel_grid_MeV": 21038075.561168253,
+  "energy_outside_grid_MeV": 0.0,
+  "energy_outside_clamped": true,
   "n_primaries": 52302569,
   "n_events": 31903991,
   "n_events_vs_n_primaries_warning": true,
   "bounds_cm": {
-    "x_min": -10.0,
-    "x_max": 10.0,
-    "y_min": -10.0,
-    "y_max": 10.0,
+    "x_min": -30.0,
+    "x_max": 30.0,
+    "y_min": -30.0,
+    "y_max": 30.0,
     "z_min": 20.0,
     "z_max": 40.0
   },
   "grid_shape": [
-    67,
-    67,
-    67
+    100,
+    100,
+    33
   ],
   "voxel_edges_summary": {
     "x": {
-      "min": -10.0,
-      "max": 10.0,
-      "n_bins": 67
+      "min": -30.0,
+      "max": 30.0,
+      "n_bins": 100
     },
     "y": {
-      "min": -10.0,
-      "max": 10.0,
-      "n_bins": 67
+      "min": -30.0,
+      "max": 30.0,
+      "n_bins": 100
     },
     "z": {
       "min": 20.0,
       "max": 40.0,
-      "n_bins": 67
+      "n_bins": 33
     }
   },
-  "voxel_size_nominal_cm": 0.3,
-  "voxel_volume_cm3": 0.027,
+  "voxel_size_nominal_cm": 0.6,
+  "voxel_volume_cm3": 0.216,
   "density_for_Gy_conversion": "user: mass_g = density_g_cm3 * voxel_volume_cm3; dose_Gy = energy_MeV * 1.602e-10 / mass_kg",
+  "density_g_cm3": 1.0,
+  "dose_units": "Gy/primary/voxel",
+  "dose_max_Gy_per_primary_voxel": 4.0929129974272546e-14,
+  "dose_sum_Gy_per_primary": 2.9835933609995596e-10,
   "kernel_stats": {
-    "max": 7.3359558392900835e-06,
-    "mean_nonzero": 1.1986038927189122e-06,
-    "total_sum_MeV_per_primary": 0.3604957025858182
+    "max": 5.517925980714851e-05,
+    "mean_nonzero": 1.2189027297063032e-06,
+    "total_sum_MeV_per_primary": 0.4022379008030801
   },
   "uncertainty_mode": "fast",
   "uncertainty_approximate": true,
+  "sigma_definition": "sigma = sqrt(sum_w2) / N_primaries (approximate, ignores within-event correlation)",
   "run_info": {
     "dose_path": "/home/xhh2c/project/geant4_cherenkov/output/cherenkov_photons_full_with_dose.dose",
     "config_path": "/home/xhh2c/project/geant4_cherenkov/config.json",
     "use_xyz": true,
-    "xy_range": [
-      -10.0,
-      10.0
-    ],
-    "timestamp": "2026-02-18T14:42:13.788593"
+    "xy_range": null,
+    "timestamp": "2026-02-18T20:58:57.016909"
   }
 }
